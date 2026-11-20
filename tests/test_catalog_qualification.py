@@ -7,8 +7,23 @@ from qualify_catalog_nangate import clock
 
 
 class QualificationTests(unittest.TestCase):
+    def test_pinless_tap_cells_remain_in_netlist_identity(self):
+        from macro_agent.aes_netlist import parse
+        with tempfile.TemporaryDirectory() as directory:
+            source=Path(directory)/"flat.v"
+            source.write_text("module d(clk); input clk; TAPCELL_X1 left (); BUF b (.A(clk)); endmodule")
+            parsed=parse(source)
+            self.assertEqual(parsed["components"],{"left":"TAPCELL_X1","b":"BUF"})
+            self.assertEqual(sum(parsed["partitions"].values()),1)
+            source.write_text("module dram(dqs); inout dqs; PAD io (.P(dqs)); endmodule")
+            self.assertEqual(parse(source)["ports"],{"dqs":"inout"})
+
     def test_clock_from_real_sdc(self):
         self.assertEqual(clock("create_clock -name CLK -period 1.5  [get_ports CK]"),("CLK","CK"))
+        simple="set n core_clock\nset period 1.8\nset p clk_i\ncreate_clock -name $n -period $period [get_ports $p]"
+        self.assertEqual(clock(simple),("core_clock","clk_i"))
+        with self.assertRaises(ValueError):
+            clock(simple.replace("1.8","[expr 1 * 2]"))
         with self.assertRaises(ValueError):
             clock("create_clock -name clk -period 1 [get_ports ck]\ncreate_generated_clock -name div -divide_by 2 [get_pins div/Q]")
 

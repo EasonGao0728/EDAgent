@@ -19,7 +19,8 @@ PARENT='3b00977c7654b5348d6c95d46b3f3db9a604720ddcf081a5a0ac50bd6857e533'
 VIA=re.compile(r'\b(?:ROUTED|NEW)\s+(\w+)\s+\(\s*(-?\d+)\s+(-?\d+)\s*\)\s+(?!NEW\b)([A-Za-z_][\w.-]*)(?=\s|;|$)')
 
 def validate_parent(state,folder):
-    if os.name!='posix' or os.getuid()!=1015:raise ValueError('SERVER_ONLY_LOCAL_ECO')
+    from .remote_platform import is_worker_account
+    if not is_worker_account():raise ValueError('SERVER_ONLY_LOCAL_ECO')
     if state['status']!='target_met' or state['contract']['case_id']!='aes_sky130_t' or state.get('final_def',{}).get('sha256')!=PARENT:
         raise ValueError('LOCAL_ECO_NOT_QUALIFIED_FOR_PARENT')
     task.verify_refs([state['final_def']])

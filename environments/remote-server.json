@@ -3,7 +3,7 @@
   "enabled": false,
   "ssh_host": "eda-worker",
   "server_root": "/srv/edagent/main-agent-remote-v1",
-  "server_uid": 1015,
+  "server_uid": null,
   "execution_location": "server",
   "local_fallback": false,
   "concurrency": 1,

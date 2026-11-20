@@ -27,7 +27,8 @@ def sha(p):
 
 def runtime_status():
     from .portable_ieda import BINARY_SHA256
-    if os.getuid()!=1015:raise ValueError('Unauthorized server UID')
+    from .remote_platform import is_worker_account
+    if not is_worker_account():raise ValueError('Unauthorized server UID')
     actual=sha(RUNTIME/'iEDA')
     if actual!=BINARY_SHA256:raise ValueError('Server iEDA binary identity changed')
     return {'available':True,'tool_id':'iEDA','execution_location':'server',

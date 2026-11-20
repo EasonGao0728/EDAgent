@@ -33,9 +33,18 @@ def load_stage_engine(project, candidate):
 def clock(sdc):
     # The original SDC drives the timing engine. Catalog guesses can differ
     # in both clock name and period even when they identify the same port.
-    lines=[line.strip() for line in sdc.splitlines() if re.match(r"^\s*create_(?:generated_)?clock\b",line)]
+    commands=[line.strip() for line in sdc.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    lines=[line for line in commands if re.search(r"\bcreate_(?:generated_)?clock\b",line)]
     if len(lines)!=1:raise ValueError("single-clock binding unavailable")
-    found=re.fullmatch(r"create_clock\s+-name\s+(\w+)\s+-period\s+([\d.]+)\s+\[get_ports\s+(\w+)\]\s*;?",lines[0])
+    declaration=lines[0]
+    if "$" in declaration:
+        values={}
+        for line in commands[:commands.index(declaration)]:
+            binding=re.fullmatch(r"set\s+(\w+)\s+([a-zA-Z0-9_.]+)\s*;?",line)
+            if not binding:raise ValueError("clock depends on unsupported Tcl preamble")
+            values[binding[1]]=binding[2]
+        declaration=re.sub(r"\$(\w+)",lambda match:values.get(match[1],match[0]),declaration)
+    found=re.fullmatch(r"create_clock\s+-name\s+(\w+)\s+-period\s+([\d.]+)\s+\[get_ports\s+(\w+)\]\s*;?",declaration)
     if not found or float(found[2])<=0:raise ValueError("unsupported clock declaration")
     name,port=found[1],found[3]
     if not all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*",v) for v in (name,port)):

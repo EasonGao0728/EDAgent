@@ -75,7 +75,7 @@ def normalized_netlist(directory, case):
     return netlist,record,report_path
 
 
-def run(project, case, bench, pdks, structural=False):
+def run(project, case, bench, pdks, structural=False, checker=None):
     sys.path.insert(0,str(project))
     from macro_agent import remote_service
     from macro_agent.portable_ieda import ENV, IMAGE, BINARY_SHA256
@@ -151,15 +151,20 @@ def run(project, case, bench, pdks, structural=False):
             raise ValueError(f"import structural discrepancy: top={top}, instances={instances}/{expected}, nets={nets}; {attempt.name}")
         result=dict(case=case["id"],stage="import_netlist",inputs=identity,binary=BINARY_SHA256,instances=expected,nets=nets,def_hash=digest(artifact))
         if structural:
-            from macro_agent.aes_netlist import verify
+            from macro_agent import aes_netlist
+            if checker is not None:
+                import importlib.util
+                spec=importlib.util.spec_from_file_location("macro_agent.catalog_verifier",checker)
+                aes_netlist=importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(aes_netlist)
             from macro_agent.def_validation import lef_cells
             from macro_agent.liberty_buses import read_buses
             cells={}
             for name in lefs:
                 cells.update(lef_cells(paths[name],2000))
             buses=read_buses([paths[name] for name in lib],cells)
-            proof=verify(netlist,artifact,buses)
-            result.update(tie_cells=record["tie_cells_added"],normalized_import=proof)
+            proof=aes_netlist.verify(netlist,artifact,buses)
+            result.update(tie_cells=record["tie_cells_added"],normalized_import=proof,checker_sha256=digest(Path(aes_netlist.__file__)))
             if not proof["passed"]:
                 (attempt/"rejected.json").write_text(json.dumps(result,indent=2))
                 raise ValueError("normalized endpoint verification failed: "+", ".join(proof["errors"]))
@@ -176,7 +181,8 @@ if __name__=="__main__":
         parser.add_argument("--"+key,type=Path,required=True)
     parser.add_argument("case")
     parser.add_argument("--structural",action="store_true",help="Qualify the hash-bound flattened netlist and compare electrical endpoint partitions")
+    parser.add_argument("--checker",type=Path,help="Operator-supplied audit module for qualification, isolated from older production runs")
     args=parser.parse_args()
     cases=json.loads(args.catalog.read_bytes())
     selected=next(c for c in cases if c["id"]==args.case and c.get("assets"))
-    print(json.dumps(run(args.project.resolve(),selected,args.benchmarks,args.pdks,args.structural)))
+    print(json.dumps(run(args.project.resolve(),selected,args.benchmarks,args.pdks,args.structural,args.checker)))

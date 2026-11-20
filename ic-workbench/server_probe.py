@@ -76,6 +76,23 @@ else:
         if case["pdk"] == "ics55":
             readiness[case_id] = "等待 ICS55 工艺库授权"
             continue
+        try:
+            pilot=json.loads((Path("runs") / ("bringup-"+case_id) / "qualification.json").read_bytes())
+            if (pilot["case"]==case_id and pilot["source_sha256"]==case["assets"]["netlist"]["sha256"]
+                and pilot["gds_export"]["passed"] and pilot["routed_readback"]["semantic_match"]):
+                count=pilot["drc"]["drc"]["violation_count"]
+                readiness[case_id]=f"服务器全流程已验证 · DRC {count} 项"
+                continue
+        except (OSError, ValueError, KeyError):
+            pass
+        try:
+            checked=json.loads((Path("runs")/("structural-"+case_id)/"endpoint-check.json").read_bytes())
+            if (checked["case"]==case_id and checked["source_sha256"]==case["assets"]["netlist"]["sha256"]
+                and checked["normalized_import"]["passed"] is True):
+                readiness[case_id]="网表端点已核验"
+                continue
+        except (OSError, ValueError, KeyError):
+            pass
         for prefix, label in (("structural-", "网表端点已核验"), ("qualification-", "已生成导入 DEF")):
             receipt = Path("runs") / (prefix+case_id) / "import.json"
             try:

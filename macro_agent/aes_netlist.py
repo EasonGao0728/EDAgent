@@ -57,7 +57,7 @@ def parse(path, port_buses=None):
             if any(v not in decl[n] for v in bits):raise ValueError('Out-of-range selection')
         return bits
     while tokens[i]!='endmodule':
-        if tokens[i] in ('input','output','wire'):
+        if tokens[i] in ('input','output','inout','wire'):
             kind=take();rng=None
             if tokens[i]=='[':
                 take('[');a=int(take());take(':');b=int(take());take(']');rng=sequence(a,b)
@@ -81,6 +81,10 @@ def parse(path, port_buses=None):
             master=ident();name=ident()
             if name in components:raise ValueError('Duplicate instance')
             components[name]=master;take('(');seen=set()
+            # Physical-only instances such as tap cells can have no signal pins.
+            # Keep their instance/master identity for comparison with DEF.
+            if i<len(tokens) and tokens[i]==')':
+                take(')');take(';');continue
             while True:
                 take('.');pin=ident()
                 if pin in seen:raise ValueError('Duplicate terminal')

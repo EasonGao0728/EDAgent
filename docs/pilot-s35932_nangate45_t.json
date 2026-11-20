@@ -1,0 +1,60 @@
+{
+  "case": "s35932_nangate45_t",
+  "method": "server qualification using EDAgent stage executor",
+  "completed": [
+    "floorplan",
+    "fanout",
+    "placement",
+    "validate",
+    "export_def",
+    "cts",
+    "to_drv",
+    "to_hold",
+    "legalization",
+    "routing",
+    "filler",
+    "drc",
+    "timing",
+    "gds_export",
+    "routed_readback"
+  ],
+  "routing": {
+    "passed": true,
+    "artifact_sha256": "ed039cb7d5fd0d6b553bea8d3747a0c6da140bf255c71ce8d318bf1c7ecf49cf",
+    "binary_sha256": "9f6c91ac6a58a00feaa63ba5eef37cfd240a4b60dd1fedba0654439763a3a6f8",
+    "seconds": 295.587
+  },
+  "drc": {
+    "passed": true,
+    "artifact_sha256": "e8a15bbc748f9772d828483b838ac155e456a6a52a1e2eba2cc07ce2606ebbae",
+    "binary_sha256": "d9ae28962bf622f1139e2b438c6f69deb646d93a48ece783da80a082d607694a",
+    "seconds": 1.004,
+    "drc": {
+      "passed": true,
+      "violation_count": 48,
+      "quality_clean": false,
+      "signoff_clean": false
+    }
+  },
+  "timing": {
+    "passed": true,
+    "artifact_sha256": "e8a15bbc748f9772d828483b838ac155e456a6a52a1e2eba2cc07ce2606ebbae",
+    "binary_sha256": "d9ae28962bf622f1139e2b438c6f69deb646d93a48ece783da80a082d607694a",
+    "seconds": 1.004
+  },
+  "gds_export": {
+    "passed": true,
+    "artifact_sha256": "5e52b5b1300b72f7e242a7f8cedd08fcf79b898655fd1e3cc70dbb469de16ff3",
+    "binary_sha256": "1c09a58421e63174c845ca1c5ed8f4f2ca7aa59e4632285ef97171893b4b51fe",
+    "seconds": 1.004,
+    "bytes": 22714208
+  },
+  "routed_readback": {
+    "passed": true,
+    "artifact_sha256": "e8a15bbc748f9772d828483b838ac155e456a6a52a1e2eba2cc07ce2606ebbae",
+    "binary_sha256": "d9ae28962bf622f1139e2b438c6f69deb646d93a48ece783da80a082d607694a",
+    "seconds": 1.005,
+    "semantic_match": true
+  },
+  "source_sha256": "cfd1e64f6ab552d4efce4118d52975132d03497b0340c9fc6be8a8bf7d1b18e8"
+}

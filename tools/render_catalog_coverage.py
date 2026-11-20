@@ -10,11 +10,17 @@ def snapshot(catalog, evidence):
     matrix={row["id"]:row for row in json.loads((evidence/"input-matrix.json").read_bytes())}
     if set(matrix)!={case["id"] for case in cases} or len(matrix)!=len(cases):
         raise ValueError("case catalog and input audit do not match")
+    archive_path=evidence/"archived-stage-inventory.jsonl"
+    archive={}
+    if archive_path.is_file():
+        for line in archive_path.read_text(encoding="utf-8-sig").splitlines():
+            item=json.loads(line)
+            archive[item["case"]]=item["stages"]["routing"]
     content=[
         "# Case coverage", "",
         "Each row identifies a design and its original process. Cell counts are catalog values before any documented tie-cell normalization. The profile column describes the production workbench. The last column describes this qualification campaign on the research worker. [Evidence definitions and process-library sources](QUALIFICATION.md)", "",
-        "| Design | PDK | Standard cells | Hard macros | Workbench profile | Latest qualification evidence |",
-        "|---|---|---:|---:|---|---|"
+        "| Design | PDK | Standard cells | Hard macros | Workbench profile | Archived routing | Latest qualification evidence |",
+        "|---|---|---:|---:|---|---|---|"
     ]
     for case in cases:
         ident=case["id"]
@@ -44,7 +50,21 @@ def snapshot(catalog, evidence):
                 observed+="; normalized endpoints matched"
             elif (evidence/("structural-"+ident+".error.txt")).exists():
                 observed+="; normalized qualification unsuccessful"
-        content.append(f"| {ident} | {case['pdk']} | {case['cells']:,} | {case['macros']} | {profile} | {observed} |")
+            rechecked=evidence/("rechecked-"+ident+".json")
+            if rechecked.is_file():
+                proof=json.loads(rechecked.read_bytes())
+                if proof["case"]!=ident or proof["source_sha256"]!=case["assets"]["netlist"]["sha256"]:
+                    raise ValueError("endpoint report does not match "+ident)
+                if proof["normalized_import"]["passed"]:
+                    observed=observed.split(";")[0]+"; retained normalized DEF endpoints independently matched"
+            pilot=evidence/("pilot-"+ident+".json")
+            if pilot.is_file():
+                result=json.loads(pilot.read_bytes())
+                if result["case"]!=ident or not result["routed_readback"]["semantic_match"] or not result["gds_export"]["passed"]:
+                    raise ValueError("incomplete physical pilot for "+ident)
+                count=result["drc"]["drc"]["violation_count"]
+                observed=f"Server stage executor through routed DEF readback and abstract GDS; {count} DRC findings"
+        content.append(f"| {ident} | {case['pdk']} | {case['cells']:,} | {case['macros']} | {profile} | {archive.get(ident,'—')} | {observed} |")
     return "\n".join(content)+"\n"
 
 

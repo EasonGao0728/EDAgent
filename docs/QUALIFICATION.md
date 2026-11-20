@@ -26,3 +26,10 @@ The public-library helper uses the GitHub CLI and verifies the exact blob agains
 For a deployed worker with its native binaries and compatible benchmark archive, use `tools/qualify_catalog_native_import.py` with the same four root options and the case ID. Add `--structural` for a hash-bound normalized input. The experimental Nangate45 stage driver `tools/qualify_catalog_nangate.py` starts from a verified import and reads the actual single-clock SDC. It retains stage receipts. Its `--resume` option checks their artifacts, stage sequence and input identity before advancing. A case must qualify and be integrated into the workbench before it is advertised as runnable there.
 
 The seven ICS55 rows still need the matching technology LEF, standard-cell LEF and timing Liberty. Their existing macro models alone do not define a complete process. They stay in the catalog pending access.
+## Native pilot
+
+The [s35932 result](pilot-s35932_nangate45_t.json) comes from the server-side EDAgent stage executor. This standard-cell design reached routed DEF readback and produced a 22,714,208-byte abstract GDS. Detailed routing took 295.587 seconds. Native DRC reported **48 violations**. The timing report uses diagnostic parasitics. The workbench exposes this qualification result alongside its current input-audit entry.
+
+The original hierarchical Vortex import exhausted the worker address-space limit. The original WUKONG import stopped in the Verilog expression parser. Both normalized attempts reached allocation failures in the same 8 GiB envelope. Two Nangate45 Ariane raw imports also crashed; retained normalized DEFs independently matched their source endpoints after the checker learned to retain pinless physical tap-cell instances. These results preserve the original failed paths.
+
+The shared archive lists 21 of the 43 additional cases with audited routing and 22 without a routing result. All 43 mark GDS as `NOT_GENERATED_BY_2D_BASELINE`. The archived routing column is separate from native EDAgent receipts.

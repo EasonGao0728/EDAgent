@@ -37,9 +37,20 @@ def locked(folder):
         finally: fcntl.flock(stream, fcntl.LOCK_UN)
 
 
+def is_worker_account():
+    """Bind the worker to the non-root account explicitly configured by its operator."""
+    import json
+    if os.name != "posix":
+        return False
+    path=Path(__file__).resolve().parents[1]/"environments/remote-server.json"
+    profile=json.loads(path.read_bytes())
+    uid=profile.get("server_uid")
+    return profile.get("enabled") is True and type(uid) is int and uid>0 and os.getuid()==uid
+
+
 def install():
     python_compat()
-    if os.name != 'posix' or os.getuid() != 1015:
+    if not is_worker_account():
         raise RuntimeError('Remote profile requires the authorized server account')
     from . import main_task as task, ieda_runtime as rt
     from .remote_native import runtime_status

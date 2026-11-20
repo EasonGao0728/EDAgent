@@ -10,3 +10,5 @@ The open source checkout contains application and test source. The browser workb
 For an actual design, use a technology-mapped Verilog netlist, matching technology and cell LEFs, corner-matched Liberty, SDC, and matching macro LEF/Liberty when the design contains macros. The lab's registered-input procedure also requires a design manifest and design metadata. An input check does not grant full-flow qualification. Faults in timing coverage, DRC or macro geometry must stay visible.
 
 Historical reproduction tools under tools/ may depend on artifacts from a particular experiment. The portable offline example and CI exercise the parts reproducible from a clean clone.
+
+For a new deployment, set `ssh_host` to your SSH alias and set `server_uid` to the output of `id -u` for the approved, non-root Linux account. Configure `server_root` and its benchmark/runtime paths for that installation. Apply the matching profile on both hosts and enable it only after the worker binaries match the expected hashes. The public template starts disabled with no authorized UID.

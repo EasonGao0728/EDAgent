@@ -62,7 +62,8 @@ def evidence(state,folder,kind,cursor,limit):
 
 
 def run(state,folder,plan_id):
-    if os.name!='posix' or os.getuid()!=1015:raise ValueError('SERVER_ONLY_EXPERIMENT')
+    from .remote_platform import is_worker_account
+    if not is_worker_account():raise ValueError('SERVER_ONLY_EXPERIMENT')
     r=verify(state);f=r['files'];p=lambda key:Path(f[key]['path'])
     w=Path(folder)/'decision-experiments'/plan_id
     if w.exists():raise ValueError('EXPERIMENT_ALREADY_EXISTS: inspect receipt; never rerun')
