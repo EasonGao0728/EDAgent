@@ -1,0 +1,64 @@
+{
+  "schema_version": "ieda.drc.violations.v1",
+  "artifact": "violations",
+  "tool": "iDRC",
+  "status": "partial_clean",
+  "source": "idrc_in_design",
+  "stage": "DRC",
+  "count": 0,
+  "coordinate_units": "DBU",
+  "dbu_per_micron": 1000,
+  "coverage": {
+    "schema_version": "ieda.drc.coverage.v1",
+    "status": "partial_clean",
+    "check_profile": "all_loaded_rules",
+    "checked": [
+      "cut_short",
+      "maximum_width",
+      "metal_short",
+      "minimum_area",
+      "minimum_width",
+      "nonsufficient_metal_overlap",
+      "off_grid_or_wrong_way",
+      "out_of_die",
+      "parallel_run_length_spacing",
+      "same_layer_cut_spacing"
+    ],
+    "skipped": [],
+    "unsupported": [
+      "adjacent_cut_spacing",
+      "corner_fill_spacing",
+      "corner_spacing",
+      "cut_eol_spacing",
+      "different_layer_cut_spacing",
+      "enclosure",
+      "enclosure_edge",
+      "enclosure_parallel",
+      "end_of_line_spacing",
+      "floating_patch",
+      "jog_to_jog_spacing",
+      "max_via_stack",
+      "min_hole",
+      "min_step",
+      "minimum_cut",
+      "notch_spacing"
+    ],
+    "signoff_clean": false
+  },
+  "provenance": {
+    "design_name": "gcd",
+    "def_file_path": "/work/result/filler.def",
+    "temp_directory_path": "/work/result/report/drc.rpt.artifacts/",
+    "rule_deck_hash": "unknown"
+  },
+  "hashes": {
+    "deck_sha256": "unknown",
+    "rule_deck_hash": "unknown"
+  },
+  "summary": {
+    "total": 0,
+    "by_type": {},
+    "by_layer": {}
+  },
+  "violations": []
+}

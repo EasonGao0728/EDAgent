@@ -1,0 +1,29 @@
+{
+  "adapter": "toy",
+  "case_id": "connected_groups",
+  "description": "Teaching case: two dispersed connected groups and a fixed central macro.",
+  "units": "abstract_units",
+  "core": {"x": 0, "y": 0, "width": 100, "height": 100},
+  "grid": 1,
+  "min_spacing": 2,
+  "macros": [
+    {"id": "hub", "x": 45, "y": 45, "width": 10, "height": 10, "fixed": true},
+    {"id": "a", "x": 8, "y": 10, "width": 10, "height": 10},
+    {"id": "b", "x": 80, "y": 12, "width": 12, "height": 10},
+    {"id": "c", "x": 10, "y": 80, "width": 10, "height": 10},
+    {"id": "d", "x": 80, "y": 80, "width": 12, "height": 10},
+    {"id": "e", "x": 30, "y": 75, "width": 8, "height": 8}
+  ],
+  "ports": [{"id": "io_w", "x": 0, "y": 50}, {"id": "io_e", "x": 100, "y": 50}],
+  "blockages": [],
+  "nets": [
+    {"id": "ab", "nodes": ["a", "b"], "weight": 8},
+    {"id": "ah", "nodes": ["a", "hub"], "weight": 6},
+    {"id": "bh", "nodes": ["b", "hub"], "weight": 6},
+    {"id": "cd", "nodes": ["c", "d"], "weight": 5},
+    {"id": "ce", "nodes": ["c", "e"], "weight": 3},
+    {"id": "de", "nodes": ["d", "e"], "weight": 3},
+    {"id": "aw", "nodes": ["a", "io_w"], "weight": 1},
+    {"id": "be", "nodes": ["b", "io_e"], "weight": 1}
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "source": "https://github.com/OSCC-Project/iEDA",
+  "source_commit": "65c39fd28aa0dc0cdd56325df07f6e440069061b",
+  "image": "sha256:fabdb8c156a27ed56952c9b8e17c445fa60bafafc24b27fbfc435f4772c7adcf",
+  "executable": "environments\\ieda-export\\bin\\ieda-idb-export",
+  "executable_sha256": "1c09a58421e63174c845ca1c5ed8f4f2ca7aa59e4632285ef97171893b4b51fe",
+  "patch_manifest": {
+    "upstream": "65c39fd28aa0dc0cdd56325df07f6e440069061b",
+    "changes": [
+      "Design name as the single top",
+      "Reference IO pins from top",
+      "Omit detached metadata cells",
+      "Compile the local binary GDS serializer against public iDB GdsData"
+    ],
+    "files": {
+      "binary_writer.cpp": "0d601815099eabcb3255aac5abf8493aa9eeff38b0dd67816723d1f9c4f30f13",
+      "CMakeLists.txt": "8141f22301c66a251073f58aa9b8679971f308966c492c7492a5b590bb6e9e70",
+      "gds_write.cpp": "1d30c43d9c75fdf94258bf7864f15aaaf50bf5b4536acb82a35726801ea5aee1",
+      "main.cpp": "46de369e4ef370779ba7e21dec4b89e3ea152377db983372d9b8e8845386c52e"
+    }
+  },
+  "qualified": false
+}

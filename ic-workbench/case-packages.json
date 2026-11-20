@@ -1,0 +1,1325 @@
+[
+  {
+    "id": "sky130_gcd",
+    "size": "小型",
+    "cells": 639,
+    "macros": 0,
+    "goal": "placement_def",
+    "files": [],
+    "pdk": "Sky130"
+  },
+  {
+    "id": "ibench_gcd_legacy",
+    "size": "小型",
+    "cells": 255,
+    "macros": 0,
+    "goal": "full_backend",
+    "files": [
+      "gcd.native_2d.v",
+      "sky130_fd_sc_hd.tlef",
+      "sky130_fd_sc_hd_merged.lef",
+      "sky130_fd_sc_hd__tt_025C_1v80.lib",
+      "gcd.sdc",
+      "manifest.json",
+      "design.json"
+    ],
+    "pdk": "Sky130"
+  },
+  {
+    "id": "sky130_sram_pair",
+    "size": "小型",
+    "cells": 64,
+    "macros": 2,
+    "goal": "placement_def",
+    "files": [
+      "gcd_sram.v",
+      "sky130_fd_sc_hs.tlef",
+      "sky130_fd_sc_hs_merged.lef",
+      "sky130_sram_1rw1r_44x64_8.lef",
+      "sky130_fd_sc_hs__tt_025C_1v80.lib",
+      "sky130_sram_1rw1r_44x64_8_TT_1p8V_25C.lib",
+      "gcd.sdc",
+      "manifest.json",
+      "design.json"
+    ],
+    "pdk": "Sky130"
+  },
+  {
+    "id": "aes_sky130_t",
+    "size": "中型",
+    "cells": 9434,
+    "macros": 0,
+    "goal": "full_backend",
+    "files": [
+      "design.v",
+      "sky130_fd_sc_hd.tlef",
+      "sky130_fd_sc_hd_merged.lef",
+      "sky130_fd_sc_hd__tt_025C_1v80.lib",
+      "design.sdc",
+      "manifest.json",
+      "design.json"
+    ],
+    "pdk": "Sky130"
+  },
+  {
+    "id": "aes_legacy",
+    "size": "中型",
+    "cells": 18646,
+    "macros": 0,
+    "goal": "full_backend",
+    "files": [
+      "design.v",
+      "sky130_fd_sc_hd.tlef",
+      "sky130_fd_sc_hd_merged.lef",
+      "sky130_fd_sc_hd__tt_025C_1v80.lib",
+      "design.sdc",
+      "manifest.json",
+      "design.json"
+    ],
+    "pdk": "Sky130"
+  },
+  {
+    "id": "aes_core_sky130_t",
+    "size": "中型",
+    "cells": 20092,
+    "macros": 0,
+    "goal": "full_backend",
+    "files": [
+      "design.v",
+      "sky130_fd_sc_hd.tlef",
+      "sky130_fd_sc_hd_merged.lef",
+      "sky130_fd_sc_hd__tt_025C_1v80.lib",
+      "design.sdc",
+      "manifest.json",
+      "design.json"
+    ],
+    "pdk": "Sky130"
+  },
+  {
+    "id": "swerv_nangate45",
+    "size": "中型",
+    "cells": 6777,
+    "macros": 3,
+    "goal": "full_backend",
+    "files": [
+      "design.v",
+      "NangateOpenCellLibrary.tech.lef",
+      "NangateOpenCellLibrary.macro.mod.lef",
+      "fakeram45_2048x39.lef",
+      "fakeram45_256x34.lef",
+      "fakeram45_64x21.lef",
+      "NangateOpenCellLibrary_typical.lib",
+      "fakeram45_2048x39.lib",
+      "fakeram45_256x34.lib",
+      "fakeram45_64x21.lib",
+      "design.sdc",
+      "manifest.json",
+      "design.json"
+    ],
+    "pdk": "Nangate45"
+  },
+  {
+    "id": "bp_quad",
+    "size": "超大型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "bsg_chip",
+    "cells": 1235389,
+    "macros": 220,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 3493,
+        "sha256": "cf0bd35656a3a7defde411d201f65ab88b33c7951b635e3f499af563bd1493fd"
+      },
+      "netlist": {
+        "file": "netlist/bsg_chip.v",
+        "bytes": 480831382,
+        "sha256": "7ce2267db6100b6b98c89a47fab8cf512e49af2353f85f93cb9fc73462d565a4"
+      },
+      "sdc": {
+        "file": "sdc/bp_quad.sdc",
+        "bytes": 676,
+        "sha256": "e94e78955ff2aceb93638687f52ff77cadb2442e26b252d98dcd4bc883959185"
+      }
+    }
+  },
+  {
+    "id": "ariane136",
+    "size": "大型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "ariane",
+    "cells": 174893,
+    "macros": 136,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2197,
+        "sha256": "3c050c11e0b81ff1708ef9121fa0ad53052ce9428f9bd3a2e6e0dcbbaba3e281"
+      },
+      "netlist": {
+        "file": "netlist/ariane.v",
+        "bytes": 42328055,
+        "sha256": "220c2961532fe1e0fb2650a51b88c30afe178456d639dd5cfa26a87139cc71f6"
+      },
+      "sdc": {
+        "file": "sdc/ariane136.sdc",
+        "bytes": 674,
+        "sha256": "bf49e33d6e75ce0180d5116df20c0f864a24d6b4ee3a766c45e94aba5ebaa3ef"
+      }
+    }
+  },
+  {
+    "id": "ariane133",
+    "size": "大型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "ariane",
+    "cells": 168949,
+    "macros": 132,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2193,
+        "sha256": "6ac5fe511a04dcd81f3a7e708a86714fdf958ffc709c01ef5495dc429e071835"
+      },
+      "netlist": {
+        "file": "netlist/ariane.v",
+        "bytes": 41238564,
+        "sha256": "b0ff658b6feedabb418c3eb6edb30c9d64a5eb376e25a5d1e0326f31a11f5250"
+      },
+      "sdc": {
+        "file": "sdc/ariane133.sdc",
+        "bytes": 1907,
+        "sha256": "509e4195854707a3b7a89a6b4a7252eb8abfddacd537fc67f5afcb81811c99be"
+      }
+    }
+  },
+  {
+    "id": "bp_multi",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "bp_multi_top",
+    "cells": 70634,
+    "macros": 26,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2543,
+        "sha256": "13d110ae4f8d95642f808a3027ba0af53a64aee944ac9b14e69774d074b1d19e"
+      },
+      "netlist": {
+        "file": "netlist/bp_multi_top.v",
+        "bytes": 9008281,
+        "sha256": "4b5e88ceb8e7bc247602ed12d3e2131561cffad94b7adf74e120056bb4953c2d"
+      },
+      "sdc": {
+        "file": "sdc/bp_multi.sdc",
+        "bytes": 673,
+        "sha256": "b69fec5fa2cbd3453642990231bfabd8dbb39b2cea0e219e24d255358a913872"
+      }
+    }
+  },
+  {
+    "id": "bp",
+    "size": "大型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "black_parrot",
+    "cells": 120146,
+    "macros": 24,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2422,
+        "sha256": "6e4eda37a56ed3410ebdfc294904212b85310f2c4b5ce95ef372df408affe81a"
+      },
+      "netlist": {
+        "file": "netlist/black_parrot.v",
+        "bytes": 15801603,
+        "sha256": "d7c8de1b5e03cde5aa545ea78fb000e76062ff8eacfc3e7cc8291e5dd8c3b3eb"
+      },
+      "sdc": {
+        "file": "sdc/bp.sdc",
+        "bytes": 667,
+        "sha256": "0da2559f425af0f0b6beb75955f2bf2bd9cb064daf871dd0eacf4f9054429911"
+      }
+    }
+  },
+  {
+    "id": "bp_fe",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "bp_fe_top",
+    "cells": 24562,
+    "macros": 11,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2284,
+        "sha256": "46fb57004d387272d3f7d3bad605ce4e9c81f09b408e2a0aab95ad8c167fec96"
+      },
+      "netlist": {
+        "file": "netlist/bp_fe_top.v",
+        "bytes": 3261533,
+        "sha256": "85b08e40bc6b13a8e5b621aa56860b6099bff83d6f15bb4c957190304a4a0586"
+      },
+      "sdc": {
+        "file": "sdc/bp_fe.sdc",
+        "bytes": 670,
+        "sha256": "6fa93ff130fea06815e6d9b4bd57cad3393cc9ab7a560132e9ff38f0b8a51ced"
+      }
+    }
+  },
+  {
+    "id": "bp_be",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "bp_be_top",
+    "cells": 42264,
+    "macros": 10,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2277,
+        "sha256": "91f1c49bbf48a955583ece2485011eb6449d0b18666537644fdc3505f1816bbd"
+      },
+      "netlist": {
+        "file": "netlist/bp_be_top.v",
+        "bytes": 5535610,
+        "sha256": "3c396acc9d09e1f87274b803ccb08c1b4894569de1839a51cfbe8805d13e99a1"
+      },
+      "sdc": {
+        "file": "sdc/bp_be.sdc",
+        "bytes": 2132,
+        "sha256": "8979dbb1b898cd1b8f53286440abb4fbbdca98f42314ef6eedafdafb0cc4b788"
+      }
+    }
+  },
+  {
+    "id": "bp_quad_sky130",
+    "size": "大型",
+    "pdk": "sky130",
+    "category": "处理器或SoC",
+    "top": "bsg_chip",
+    "cells": 968158,
+    "macros": 220,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 3570,
+        "sha256": "b469b49f7c749434b738d5027fc33f30d7683ccf2f77835d82bd436b5da147e7"
+      },
+      "netlist": {
+        "file": "netlist/bsg_chip.v",
+        "bytes": 138849209,
+        "sha256": "c1869d50326c6eb4225565f04877dda3fd27f92cd761cc064154209c405adbcb"
+      },
+      "sdc": {
+        "file": "sdc/bp_quad.sdc",
+        "bytes": 676,
+        "sha256": "e94e78955ff2aceb93638687f52ff77cadb2442e26b252d98dcd4bc883959185"
+      }
+    }
+  },
+  {
+    "id": "ariane136_sky130",
+    "size": "大型",
+    "pdk": "sky130",
+    "category": "处理器或SoC",
+    "top": "ariane",
+    "cells": 144748,
+    "macros": 136,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2261,
+        "sha256": "708ce20152640ce04f48ffa3bf677e4fc8fcbfcfe1ce490ed4e9262bd6203b30"
+      },
+      "netlist": {
+        "file": "netlist/ariane.v",
+        "bytes": 20764756,
+        "sha256": "c25b357b7388cee2dfdb286c5057835530aad4a745c9455e93b0c419c837e8b3"
+      },
+      "sdc": {
+        "file": "sdc/ariane136.sdc",
+        "bytes": 674,
+        "sha256": "bf49e33d6e75ce0180d5116df20c0f864a24d6b4ee3a766c45e94aba5ebaa3ef"
+      }
+    }
+  },
+  {
+    "id": "ariane133_sky130",
+    "size": "大型",
+    "pdk": "sky130",
+    "category": "处理器或SoC",
+    "top": "ariane",
+    "cells": 137631,
+    "macros": 44,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2244,
+        "sha256": "9bb4729149c8ee7ac3a673a22c92ede904e334abd67ea4a79e3e45a5ef825bda"
+      },
+      "netlist": {
+        "file": "netlist/ariane.v",
+        "bytes": 19609511,
+        "sha256": "c9c23118a97535ace827d0abe6e9c1af8de36a1066dffcaf94db39dd5b98b32b"
+      },
+      "sdc": {
+        "file": "sdc/ariane133.sdc",
+        "bytes": 1907,
+        "sha256": "509e4195854707a3b7a89a6b4a7252eb8abfddacd537fc67f5afcb81811c99be"
+      }
+    }
+  },
+  {
+    "id": "bp_multi_sky130",
+    "size": "中型",
+    "pdk": "sky130",
+    "category": "处理器或SoC",
+    "top": "bp_multi_top",
+    "cells": 75503,
+    "macros": 26,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2865,
+        "sha256": "8f9837b178717b4608bf5ca176ab2a4b9dfc3f78eeb211bd14cfd45db5a6d798"
+      },
+      "netlist": {
+        "file": "netlist/bp_multi_top.v",
+        "bytes": 10250976,
+        "sha256": "3d95bda5a06afc78de7cb89aa26558c6ad6513d1c5a34aea8efbf18714a974f2"
+      },
+      "sdc": {
+        "file": "sdc/bp_multi.sdc",
+        "bytes": 673,
+        "sha256": "b69fec5fa2cbd3453642990231bfabd8dbb39b2cea0e219e24d255358a913872"
+      }
+    }
+  },
+  {
+    "id": "bp_sky130",
+    "size": "大型",
+    "pdk": "sky130",
+    "category": "处理器或SoC",
+    "top": "black_parrot",
+    "cells": 120398,
+    "macros": 24,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2701,
+        "sha256": "5eb29c13bb7d1fa7701a6ea4de08a2d22b1544cb9c3dc7cb724c2e885a506079"
+      },
+      "netlist": {
+        "file": "netlist/black_parrot.v",
+        "bytes": 16642498,
+        "sha256": "0616d28b88468ecd2b1884b30b54cbf0b5a82dc06ba16da072decbbf69a9b3bd"
+      },
+      "sdc": {
+        "file": "sdc/bp.sdc",
+        "bytes": 667,
+        "sha256": "0da2559f425af0f0b6beb75955f2bf2bd9cb064daf871dd0eacf4f9054429911"
+      }
+    }
+  },
+  {
+    "id": "bp_fe_sky130",
+    "size": "中型",
+    "pdk": "sky130",
+    "category": "处理器或SoC",
+    "top": "bp_fe_top",
+    "cells": 20782,
+    "macros": 11,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 3144,
+        "sha256": "9f9b1ecb38e42458067872c1f0fcfc89f78091037bfac20ffc2cdfe9adf33b37"
+      },
+      "netlist": {
+        "file": "netlist/bp_fe_top.v",
+        "bytes": 2997404,
+        "sha256": "a3a4190156704e4e279cac9fcba86581e3cc81440675378d6f5bf525842c14d6"
+      },
+      "sdc": {
+        "file": "sdc/bp_fe.sdc",
+        "bytes": 670,
+        "sha256": "6fa93ff130fea06815e6d9b4bd57cad3393cc9ab7a560132e9ff38f0b8a51ced"
+      }
+    }
+  },
+  {
+    "id": "bp_be_sky130",
+    "size": "中型",
+    "pdk": "sky130",
+    "category": "处理器或SoC",
+    "top": "bp_be_top",
+    "cells": 38662,
+    "macros": 10,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 3138,
+        "sha256": "2ca2760a8c049cf46729695440d8cab5b59bec95bd88721283c3d753a5e95678"
+      },
+      "netlist": {
+        "file": "netlist/bp_be_top.v",
+        "bytes": 5437654,
+        "sha256": "a915b35e4c4d1adaa8935458dc196b66b061c1c3aad847cd111422cef243dc10"
+      },
+      "sdc": {
+        "file": "sdc/bp_be.sdc",
+        "bytes": 2132,
+        "sha256": "8979dbb1b898cd1b8f53286440abb4fbbdca98f42314ef6eedafdafb0cc4b788"
+      }
+    }
+  },
+  {
+    "id": "bp_quad_asap7",
+    "size": "超大型",
+    "pdk": "asap7",
+    "category": "处理器或SoC",
+    "top": "bsg_chip",
+    "cells": 1151155,
+    "macros": 220,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 3797,
+        "sha256": "a35517b1da07381063946daa9c652b16bff55f24dad4f5ee175eb2b815f3507d"
+      },
+      "netlist": {
+        "file": "netlist/bsg_chip.v",
+        "bytes": 157862096,
+        "sha256": "478353234170b209f30bfa6a54f85d5b0edbf25160a495964e8d86113e085ab9"
+      },
+      "sdc": {
+        "file": "sdc/bp_quad.sdc",
+        "bytes": 676,
+        "sha256": "e94e78955ff2aceb93638687f52ff77cadb2442e26b252d98dcd4bc883959185"
+      }
+    }
+  },
+  {
+    "id": "ariane136_asap7",
+    "size": "大型",
+    "pdk": "asap7",
+    "category": "处理器或SoC",
+    "top": "ariane",
+    "cells": 172355,
+    "macros": 136,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2739,
+        "sha256": "56c2b42d19c5ddac3365ecaa30c9ca9ea8b8e24f2679e2c2c57e8b4426acb61b"
+      },
+      "netlist": {
+        "file": "netlist/ariane.v",
+        "bytes": 23458984,
+        "sha256": "a101801673306865f0ff95408ba93b0224a86327c92dfad090ccb3fb31bd163f"
+      },
+      "sdc": {
+        "file": "sdc/ariane136.sdc",
+        "bytes": 674,
+        "sha256": "bf49e33d6e75ce0180d5116df20c0f864a24d6b4ee3a766c45e94aba5ebaa3ef"
+      }
+    }
+  },
+  {
+    "id": "ariane133_asap7",
+    "size": "大型",
+    "pdk": "asap7",
+    "category": "处理器或SoC",
+    "top": "ariane",
+    "cells": 167348,
+    "macros": 44,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2563,
+        "sha256": "3a31dd39bf60ca79cfb4bcd57906301e4be568d28bc6033d17c0946f2622031b"
+      },
+      "netlist": {
+        "file": "netlist/ariane.v",
+        "bytes": 22606138,
+        "sha256": "127733adf51934d7184c33dd46acf990a8b269513d6350521669ed764d2def15"
+      },
+      "sdc": {
+        "file": "sdc/ariane133.sdc",
+        "bytes": 1907,
+        "sha256": "509e4195854707a3b7a89a6b4a7252eb8abfddacd537fc67f5afcb81811c99be"
+      }
+    }
+  },
+  {
+    "id": "bp_multi_asap7",
+    "size": "中型",
+    "pdk": "asap7",
+    "category": "处理器或SoC",
+    "top": "bp_multi_top",
+    "cells": 91504,
+    "macros": 26,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 3169,
+        "sha256": "8275612c23ac79c20c0414ffb6927a544826d8bda66ff95db0dc24408607b616"
+      },
+      "netlist": {
+        "file": "netlist/bp_multi_top.v",
+        "bytes": 11948715,
+        "sha256": "33de60f36e0c59a59ca12d54c682b9edaac0cb53085af7800cc8d503b0324382"
+      },
+      "sdc": {
+        "file": "sdc/bp_multi.sdc",
+        "bytes": 673,
+        "sha256": "b69fec5fa2cbd3453642990231bfabd8dbb39b2cea0e219e24d255358a913872"
+      }
+    }
+  },
+  {
+    "id": "bp_asap7",
+    "size": "大型",
+    "pdk": "asap7",
+    "category": "处理器或SoC",
+    "top": "black_parrot",
+    "cells": 143047,
+    "macros": 24,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 3012,
+        "sha256": "8ad3c720224a6de8c8765d3c215d40775167e514d7310093a2c12b471939163d"
+      },
+      "netlist": {
+        "file": "netlist/black_parrot.v",
+        "bytes": 19056153,
+        "sha256": "feaa4e045d28cb6a3fc8278ce230a705f9e6598ccde9a87bd01de2572c3eb13d"
+      },
+      "sdc": {
+        "file": "sdc/bp.sdc",
+        "bytes": 667,
+        "sha256": "0da2559f425af0f0b6beb75955f2bf2bd9cb064daf871dd0eacf4f9054429911"
+      }
+    }
+  },
+  {
+    "id": "bp_fe_asap7",
+    "size": "中型",
+    "pdk": "asap7",
+    "category": "处理器或SoC",
+    "top": "bp_fe_top",
+    "cells": 25084,
+    "macros": 11,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2789,
+        "sha256": "8ae78db3343972b167b561edf8527affbe29d856f39de680b89d2d87810e1839"
+      },
+      "netlist": {
+        "file": "netlist/bp_fe_top.v",
+        "bytes": 3457221,
+        "sha256": "a99e4f3a967adfc3616538a6e6cfa582f5ad7622ae140165b9302b4f00b096db"
+      },
+      "sdc": {
+        "file": "sdc/bp_fe.sdc",
+        "bytes": 670,
+        "sha256": "6fa93ff130fea06815e6d9b4bd57cad3393cc9ab7a560132e9ff38f0b8a51ced"
+      }
+    }
+  },
+  {
+    "id": "bp_be_asap7",
+    "size": "中型",
+    "pdk": "asap7",
+    "category": "处理器或SoC",
+    "top": "bp_be_top",
+    "cells": 48102,
+    "macros": 10,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2783,
+        "sha256": "e6c11fbfdbfc37566ef6ffa52ed7f68ff713c0b405e9cf99a5970042be2eb04e"
+      },
+      "netlist": {
+        "file": "netlist/bp_be_top.v",
+        "bytes": 6364327,
+        "sha256": "97d06ca2287a91a58a44ab19156b53e13d34fdff49b652f243eaef74626912d6"
+      },
+      "sdc": {
+        "file": "sdc/bp_be.sdc",
+        "bytes": 2132,
+        "sha256": "8979dbb1b898cd1b8f53286440abb4fbbdca98f42314ef6eedafdafb0cc4b788"
+      }
+    }
+  },
+  {
+    "id": "bp_quad_ics55",
+    "size": "大型",
+    "pdk": "ics55",
+    "category": "处理器或SoC",
+    "top": "bsg_chip",
+    "cells": 925018,
+    "macros": 220,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 3684,
+        "sha256": "fcc178557805871fa5b9cf949a2343d4eb1a163e8b1d4d9dd68154e30f6e6a1c"
+      },
+      "netlist": {
+        "file": "netlist/bsg_chip.v",
+        "bytes": 122064811,
+        "sha256": "696bf9f2573dd51c00059912a70e1a60eb3b1a7ecbf13197fec5498e1746ab80"
+      },
+      "sdc": {
+        "file": "sdc/bp_quad.sdc",
+        "bytes": 676,
+        "sha256": "e94e78955ff2aceb93638687f52ff77cadb2442e26b252d98dcd4bc883959185"
+      }
+    }
+  },
+  {
+    "id": "ariane136_ics55",
+    "size": "大型",
+    "pdk": "ics55",
+    "category": "处理器或SoC",
+    "top": "ariane",
+    "cells": 137146,
+    "macros": 136,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2390,
+        "sha256": "76411907e5824f7ef2bad321b9640d9c2bb234df1d9631807274f8631072ebca"
+      },
+      "netlist": {
+        "file": "netlist/ariane.v",
+        "bytes": 18196322,
+        "sha256": "46b2d5040c4bbaae3ed9f08c61d3f18e55171ab17582fdb59ab602d9fb72b7d5"
+      },
+      "sdc": {
+        "file": "sdc/ariane136.sdc",
+        "bytes": 674,
+        "sha256": "bf49e33d6e75ce0180d5116df20c0f864a24d6b4ee3a766c45e94aba5ebaa3ef"
+      }
+    }
+  },
+  {
+    "id": "ariane133_ics55",
+    "size": "大型",
+    "pdk": "ics55",
+    "category": "处理器或SoC",
+    "top": "ariane",
+    "cells": 130681,
+    "macros": 44,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2371,
+        "sha256": "cc7e3678074311a29e902570f4b6a97c7e9f9aaa91630f03097fd768b4ed7206"
+      },
+      "netlist": {
+        "file": "netlist/ariane.v",
+        "bytes": 17202817,
+        "sha256": "970fc152a36a0b07b6f9f4df7bcb9d6bbc838de0f9ed5fa0460b620d83f1f57d"
+      },
+      "sdc": {
+        "file": "sdc/ariane133.sdc",
+        "bytes": 1907,
+        "sha256": "509e4195854707a3b7a89a6b4a7252eb8abfddacd537fc67f5afcb81811c99be"
+      }
+    }
+  },
+  {
+    "id": "bp_multi_ics55",
+    "size": "中型",
+    "pdk": "ics55",
+    "category": "处理器或SoC",
+    "top": "bp_multi_top",
+    "cells": 73181,
+    "macros": 26,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2975,
+        "sha256": "91059ce92f118f7740f7d7310c110aca362edc120c4a5ffb9b0ee855c295bc57"
+      },
+      "netlist": {
+        "file": "netlist/bp_multi_top.v",
+        "bytes": 9086657,
+        "sha256": "5d32876230f8ec69b924aef949d7b9313d9e1fd75f79b67133914f5d86759227"
+      },
+      "sdc": {
+        "file": "sdc/bp_multi.sdc",
+        "bytes": 673,
+        "sha256": "b69fec5fa2cbd3453642990231bfabd8dbb39b2cea0e219e24d255358a913872"
+      }
+    }
+  },
+  {
+    "id": "bp_ics55",
+    "size": "大型",
+    "pdk": "ics55",
+    "category": "处理器或SoC",
+    "top": "black_parrot",
+    "cells": 114374,
+    "macros": 24,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2816,
+        "sha256": "1f105af52753b83066c0a6406448df53b07187a9390da04015e3aa91597341f7"
+      },
+      "netlist": {
+        "file": "netlist/black_parrot.v",
+        "bytes": 14538741,
+        "sha256": "c601079734caa6d8eb3dc711fdb828dad714381107e70606d17251974370c5e9"
+      },
+      "sdc": {
+        "file": "sdc/bp.sdc",
+        "bytes": 667,
+        "sha256": "0da2559f425af0f0b6beb75955f2bf2bd9cb064daf871dd0eacf4f9054429911"
+      }
+    }
+  },
+  {
+    "id": "bp_fe_ics55",
+    "size": "中型",
+    "pdk": "ics55",
+    "category": "处理器或SoC",
+    "top": "bp_fe_top",
+    "cells": 20576,
+    "macros": 11,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2597,
+        "sha256": "3670a7689ca4b295ef62e7e6c24056bd897426129b25b5b761ab341531560bf0"
+      },
+      "netlist": {
+        "file": "netlist/bp_fe_top.v",
+        "bytes": 2737003,
+        "sha256": "6c5287e7916f56926e637fe51ed0dd4cf8171234be8f7735efe0a42cce256806"
+      },
+      "sdc": {
+        "file": "sdc/bp_fe.sdc",
+        "bytes": 670,
+        "sha256": "6fa93ff130fea06815e6d9b4bd57cad3393cc9ab7a560132e9ff38f0b8a51ced"
+      }
+    }
+  },
+  {
+    "id": "bp_be_ics55",
+    "size": "中型",
+    "pdk": "ics55",
+    "category": "处理器或SoC",
+    "top": "bp_be_top",
+    "cells": 37374,
+    "macros": 10,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2590,
+        "sha256": "504d38301e30c5412924eb9b7a1144f7f9d3e1cc064e1240b3e606190a5830b2"
+      },
+      "netlist": {
+        "file": "netlist/bp_be_top.v",
+        "bytes": 4818328,
+        "sha256": "2fa2260688920297d117b130173e3ebfdb8cbb3394ff87ee4247462377587957"
+      },
+      "sdc": {
+        "file": "sdc/bp_be.sdc",
+        "bytes": 2132,
+        "sha256": "8979dbb1b898cd1b8f53286440abb4fbbdca98f42314ef6eedafdafb0cc4b788"
+      }
+    }
+  },
+  {
+    "id": "tinyram",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "tinyram",
+    "cells": 2983,
+    "macros": 2,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2176,
+        "sha256": "5860d029ead3dc65f26629f3df44e158f1eeffe531d04ff3e2e383f94914965a"
+      },
+      "netlist": {
+        "file": "netlist/tinyram.v",
+        "bytes": 333386,
+        "sha256": "6a986827bb677a9a76870249a86923678c10b3c500d0a4674c979b720cb26c96"
+      },
+      "sdc": {
+        "file": "sdc/tinyram.sdc",
+        "bytes": 2576,
+        "sha256": "99ddbf9a41b510ca2817070c4943080a18ea20134d53d36ebff7eac31e9ad7be"
+      }
+    }
+  },
+  {
+    "id": "jpeg",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "图像或并行计算",
+    "top": "jpeg_encoder",
+    "cells": 59596,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 1959,
+        "sha256": "81b07b6c6da26280a18f3a5bbc739ad1ee7d3b9b4130d625abb7d9db8c64a803"
+      },
+      "netlist": {
+        "file": "netlist/jpeg_encoder.v",
+        "bytes": 7118536,
+        "sha256": "f2dcb95043669ed9048d5ec67954fa93a6e05a6d8af903324fa05cd1e5cc49d1"
+      },
+      "sdc": {
+        "file": "sdc/jpeg.sdc",
+        "bytes": 2107,
+        "sha256": "2baa3c0fe46b61a8962f6bc10e7a2d745756e67a3ad7d86ecb5da4cc73af8c8d"
+      }
+    }
+  },
+  {
+    "id": "toygpu",
+    "size": "大型",
+    "pdk": "nangate45",
+    "category": "图像或并行计算",
+    "top": "top",
+    "cells": 363570,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 1965,
+        "sha256": "7316dad1f0790cbd705ebc89363fd59cb92f98c7eb8cb6ee1b3a3da4a8c7e9e0"
+      },
+      "netlist": {
+        "file": "netlist/top.v",
+        "bytes": 49017061,
+        "sha256": "4bc538dea03c5b15f8f67e188cb473823e466bdf5ad79cb3e48224ab3b355019"
+      },
+      "sdc": {
+        "file": "sdc/toygpu.sdc",
+        "bytes": 637,
+        "sha256": "c1aaf87c405057dadc54b207a5044bcef9e09e03c0ba672ff953853f898b9e4f"
+      }
+    }
+  },
+  {
+    "id": "vortex",
+    "size": "超大型",
+    "pdk": "nangate45",
+    "category": "图像或并行计算",
+    "top": "Vortex",
+    "cells": 1771888,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2749,
+        "sha256": "14320149343fdd1de80bbe4d65aeb1ca3887493e7c86b1725d7f1e7a74bd9546"
+      },
+      "netlist": {
+        "file": "netlist/Vortex.v",
+        "bytes": 157360856,
+        "sha256": "d0e11f202c57851b96683eb6aff19a0bbedc0ecf46bde66c737e487a7edad275"
+      },
+      "sdc": {
+        "file": "sdc/vortex.sdc",
+        "bytes": 761,
+        "sha256": "52a40def0e7df0383f648a293a2fea74b8e1d5282befdeb31f8b67b8ec03d05d"
+      }
+    }
+  },
+  {
+    "id": "WUKONG",
+    "size": "超大型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "Top",
+    "cells": 2002273,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2639,
+        "sha256": "2d488959b82724128554cbf5d98cb52b96a3816b5bfc397e6052ce4336c3ec06"
+      },
+      "netlist": {
+        "file": "netlist/Top.v",
+        "bytes": 135309935,
+        "sha256": "962a918c2ef1cdec19a7a1a3b3dc631b756e3089fc41d4de955b48a4b5bac1ad"
+      },
+      "sdc": {
+        "file": "sdc/WUKONG.sdc",
+        "bytes": 325,
+        "sha256": "240581bd45b049ae85f4ffd4eaca39534cb111e82fbc66ec462fefa02c4e2e17"
+      }
+    }
+  },
+  {
+    "id": "osip_uart",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "外设与控制",
+    "top": "apb4_uart",
+    "cells": 6124,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 1992,
+        "sha256": "50071c23dbd3ea8ec721d25d926aa7bb0fe1f9e8d9412a2c36bf44cfefdea9b4"
+      },
+      "netlist": {
+        "file": "netlist/apb4_uart.v",
+        "bytes": 766156,
+        "sha256": "47e43c75b1b6c55ea8946e56fc758ca70d812e978b9138523bf5ae83e06e33a3"
+      },
+      "sdc": {
+        "file": "sdc/osip_uart.sdc",
+        "bytes": 514,
+        "sha256": "f24c0ed72b8f7b1fa02b6f1f0e2db27cdafb05c4302d0aec4f301de0b9d97cd3"
+      }
+    }
+  },
+  {
+    "id": "osip_gpio",
+    "size": "小型",
+    "pdk": "nangate45",
+    "category": "外设与控制",
+    "top": "apb4_gpio",
+    "cells": 980,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 1978,
+        "sha256": "afc82230016e2a400a7d1963a1dc231a9491f48405b4a0eaa44062c0e1204374"
+      },
+      "netlist": {
+        "file": "netlist/apb4_gpio.v",
+        "bytes": 127133,
+        "sha256": "823ec168c101934d46387f68845554887aefa8f49ea1e94b8021accafa5b7355"
+      },
+      "sdc": {
+        "file": "sdc/osip_gpio.sdc",
+        "bytes": 514,
+        "sha256": "37a5c50434d1f992484ab6e7e1bfc996065a7f1f044b2e8795f8309324795dd8"
+      }
+    }
+  },
+  {
+    "id": "osip_timer",
+    "size": "小型",
+    "pdk": "nangate45",
+    "category": "外设与控制",
+    "top": "apb4_timer",
+    "cells": 636,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2007,
+        "sha256": "8dc326045b6a84b6149cbc5c0b376e25a57b00d6d9c4a3db6234a7d10871f455"
+      },
+      "netlist": {
+        "file": "netlist/apb4_timer.v",
+        "bytes": 74700,
+        "sha256": "9aec1294ae813e9b55262e4ddd7dffdd46290b813e7ffbbc94ace72ea3066d99"
+      },
+      "sdc": {
+        "file": "sdc/osip_timer.sdc",
+        "bytes": 515,
+        "sha256": "af481fb915f0d80611d67a04898479cab9459c315487fb86a9a2469dcbaf49d3"
+      }
+    }
+  },
+  {
+    "id": "osip_i2c",
+    "size": "小型",
+    "pdk": "nangate45",
+    "category": "外设与控制",
+    "top": "apb4_i2c",
+    "cells": 656,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 1968,
+        "sha256": "cac87ecfc793fb53915a28b62a4cff8d1c889f76e476c19f76dabc7ac4d8de04"
+      },
+      "netlist": {
+        "file": "netlist/apb4_i2c.v",
+        "bytes": 80050,
+        "sha256": "f8608d8a5baf291f36ac6fab8654e11b0560039cd55866762f39026a1f47885d"
+      },
+      "sdc": {
+        "file": "sdc/osip_i2c.sdc",
+        "bytes": 513,
+        "sha256": "ef48923d9617543554e2ee0817fb4c5c014196ed2789e30f3bd66c1f346daabd"
+      }
+    }
+  },
+  {
+    "id": "apb4_rng_nangate45_t",
+    "size": "小型",
+    "pdk": "nangate45",
+    "category": "外设与控制",
+    "top": "apb4_rng",
+    "cells": 110,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2288,
+        "sha256": "f8afb6aedfd88f7c838fc2c32a3f5ddc50a3b64a1ee2e45c0cc4af953a19fcfe"
+      },
+      "netlist": {
+        "file": "netlist/apb4_rng.native_2d.v",
+        "bytes": 60332,
+        "sha256": "e91ce77c7a41c7c4fae1216efd81aa60601fce09ba025a79718fd8ded3192957"
+      },
+      "sdc": {
+        "file": "sdc/apb4_rng.sdc",
+        "bytes": 457,
+        "sha256": "fe3c21a5a5ca987e8941ea54830c435ea1e378ae14e0fe24e65447271c86601c"
+      }
+    }
+  },
+  {
+    "id": "s35932_nangate45_t",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "时序逻辑基准",
+    "top": "s35932",
+    "cells": 5247,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2318,
+        "sha256": "4c7a20326b83c72c5c578d643c9443dde7db408249e1ae566013e0177074317a"
+      },
+      "netlist": {
+        "file": "netlist/s35932.native_2d.v",
+        "bytes": 1788569,
+        "sha256": "cfd1e64f6ab552d4efce4118d52975132d03497b0340c9fc6be8a8bf7d1b18e8"
+      },
+      "sdc": {
+        "file": "sdc/s35932.sdc",
+        "bytes": 51,
+        "sha256": "d8def70855758bb73f5d4956d08ee655d3102949f4658ab78517488ffe6e2505"
+      }
+    }
+  },
+  {
+    "id": "s5378_nangate45_t",
+    "size": "小型",
+    "pdk": "nangate45",
+    "category": "时序逻辑基准",
+    "top": "s5378",
+    "cells": 752,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2377,
+        "sha256": "8556ea701002a0df1966dbd1b9c2e3c250b5f197edeebe3e2245a3bd4408fd8f"
+      },
+      "netlist": {
+        "file": "netlist/s5378.native_2d.v",
+        "bytes": 217107,
+        "sha256": "dfe2ccf61e8d7a3d952572dbe2264e6fa01ce6d6353a515aec1ca0d08583ddd9"
+      },
+      "sdc": {
+        "file": "sdc/s5378.sdc",
+        "bytes": 51,
+        "sha256": "d8def70855758bb73f5d4956d08ee655d3102949f4658ab78517488ffe6e2505"
+      }
+    }
+  },
+  {
+    "id": "s9234_nangate45_t",
+    "size": "小型",
+    "pdk": "nangate45",
+    "category": "时序逻辑基准",
+    "top": "s9234",
+    "cells": 638,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 2450,
+        "sha256": "121bbb778617b6413ef40544ebbba9300ce1201449bdcb2bcdad202fb114a8be"
+      },
+      "netlist": {
+        "file": "netlist/s9234.native_2d.v",
+        "bytes": 198769,
+        "sha256": "7c3db4db789f4115a703a22ba21c2a096be9320c8e8f9250c96f0c80a7df303e"
+      },
+      "sdc": {
+        "file": "sdc/s9234.sdc",
+        "bytes": 51,
+        "sha256": "d8def70855758bb73f5d4956d08ee655d3102949f4658ab78517488ffe6e2505"
+      }
+    }
+  },
+  {
+    "id": "salsa20_nangate45_t",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "密码运算",
+    "top": "salsa20",
+    "cells": 20335,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 4063,
+        "sha256": "f9d226d88e95e7af89c4eaa29925bd996d70f890ae77cb89360e7c4731d6130f"
+      },
+      "netlist": {
+        "file": "netlist/salsa20.reader_clean.v",
+        "bytes": 2348931,
+        "sha256": "127a4347199ae6364ded6ab27928731b79d1a8f9498e91194cf732be34c0b90b"
+      },
+      "sdc": {
+        "file": "sdc/salsa20.sdc",
+        "bytes": 190,
+        "sha256": "d71801c86b7afeccf233a4642496cfceb25d322a425a23eb2110168c8cc741d5"
+      }
+    }
+  },
+  {
+    "id": "picorv32_nangate45_t",
+    "size": "中型",
+    "pdk": "nangate45",
+    "category": "处理器或SoC",
+    "top": "picorv32",
+    "cells": 7745,
+    "macros": 0,
+    "goal": "input_audit",
+    "files": [],
+    "assets": {
+      "design": {
+        "file": "design.json",
+        "bytes": 5703,
+        "sha256": "87ad67d8949fdca279d42392b31415cd90c0a7d880ec5ef6b783fdec88671b88"
+      },
+      "netlist": {
+        "file": "netlist/picorv32.reader_clean.v",
+        "bytes": 928013,
+        "sha256": "0b991d8c75c88d2158a35659af66f35ab1da938367b5c47a2c37fc63273a58ae"
+      },
+      "sdc": {
+        "file": "sdc/picorv32.sdc",
+        "bytes": 51,
+        "sha256": "ac54bce1c738cec0260c3490f8bfd067983cd26d6a38b89efc34c1dc6f2009a2"
+      }
+    }
+  }
+]

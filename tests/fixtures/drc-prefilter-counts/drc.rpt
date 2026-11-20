@@ -1,0 +1,89 @@
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:151 Info initDRC] >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:152 Info initDRC] ______________________________   _____________________________________   
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:153 Info initDRC] ___(_)__  __ \__  __ \_  ____/   __  ___/__  __/__    |__  __ \__  __/
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:154 Info initDRC] __  /__  / / /_  /_/ /  /        _____ \__  /  __  /| |_  /_/ /_  /     
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:155 Info initDRC] _  / _  /_/ /_  _, _// /___      ____/ /_  /   _  ___ |  _, _/_  /       
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:156 Info initDRC] /_/  /_____/ /_/ |_| \____/      /____/ /_/    /_/  |_/_/ |_| /_/       
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:157 Info initDRC] >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:164 Info initDRC] Starting...
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:54 Info input] Starting...
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:861 Warn getConfigValue<int>] The config '-thread_number' uses the default value!
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:861 Warn getConfigValue<std::__cxx11::basic_string<char> >] The config '-rule_coverage_table' uses the default value!
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:861 Warn getConfigValue<int>] The config '-enable_c_vio_json' uses the default value!
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:861 Warn getConfigValue<std::__cxx11::basic_string<char> >] The config '-c_vio_json_path' uses the default value!
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:295 Info printConfig] DRC_CONFIG_INPUT
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:296 Info printConfig]   temp_directory_path
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:297 Info printConfig]     /work/result/report/drc.rpt.artifacts/
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:298 Info printConfig]   thread_number
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:299 Info printConfig]     128
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:301 Info printConfig] DRC_CONFIG_BUILD
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:302 Info printConfig]   log_file_path
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:303 Info printConfig]     /work/result/report/drc.rpt.artifacts/drc.log
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:305 Info printConfig]   RuleValidator
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:306 Info printConfig]     rv_temp_directory_path
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:307 Info printConfig]       /work/result/report/drc.rpt.artifacts/rule_validator/
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:309 Info printConfig]   GDSPlotter
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:310 Info printConfig]     gp_temp_directory_path
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:311 Info printConfig]       /work/result/report/drc.rpt.artifacts/gds_plotter/
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:319 Info printDatabase] DRC_DATABASE
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:320 Info printDatabase]   design_name
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:321 Info printDatabase]     gcd
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:322 Info printDatabase]   lef_file_path_list
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:324 Info printDatabase]     /reference/pdk/lef/sky130_fd_sc_hd.tlef
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:324 Info printDatabase]     /reference/pdk/lef/sky130_fd_sc_hd_merged.lef
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:326 Info printDatabase]   def_file_path
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:327 Info printDatabase]     /work/result/filler.def
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:329 Info printDatabase]   micron_dbu
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:330 Info printDatabase]     1000
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:332 Info printDatabase]   manufacture_grid
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:333 Info printDatabase]     5
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:336 Info printDatabase]   die
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:337 Info printDatabase]     (0,0)-(67160,81600)
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:340 Info printDatabase]   routing_layer_num
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:341 Info printDatabase]     6
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:342 Info printDatabase]   routing_layer
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:344 Info printDatabase]     idx:0 order:2 name:li1 prefer_direction:vertical pitch:460
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:344 Info printDatabase]     idx:1 order:4 name:met1 prefer_direction:horizontal pitch:460
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:344 Info printDatabase]     idx:2 order:6 name:met2 prefer_direction:vertical pitch:460
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:344 Info printDatabase]     idx:3 order:8 name:met3 prefer_direction:horizontal pitch:460
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:344 Info printDatabase]     idx:4 order:10 name:met4 prefer_direction:vertical pitch:460
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:344 Info printDatabase]     idx:5 order:12 name:met5 prefer_direction:horizontal pitch:460
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:350 Info printDatabase]   cut_layer_num
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:351 Info printDatabase]     5
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:352 Info printDatabase]   cut_layer
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:354 Info printDatabase]     idx:0 order:3 name:mcon
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:354 Info printDatabase]     idx:1 order:5 name:via
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:354 Info printDatabase]     idx:2 order:7 name:via2
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:354 Info printDatabase]     idx:3 order:9 name:via3
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:354 Info printDatabase]     idx:4 order:11 name:via4
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:60 Info input] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 0.00MB) 
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:172 Info initDRC] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 0.00MB) 
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:1244 Info buildResultShapeList] Starting...
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:1401 Info buildResultShapeList] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 0.00MB) 
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:1024 Info buildEnvShapeList] Starting...
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:1199 Info buildEnvShapeList] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 0.00MB) 
+[DRC 20261113 17:21:16 QK2UwfND RuleValidator.cpp:253 Info verify] Starting...
+[DRC 20261113 17:21:16 QK2UwfND RuleValidator.cpp:296 Info setRVComParam] cluster_size: 46000
+[DRC 20261113 17:21:16 QK2UwfND RuleValidator.cpp:297 Info setRVComParam] expand_size: 2300
+[DRC 20261113 17:21:16 QK2UwfND RuleValidator.cpp:388 Info verifyRVModel] Starting...
+[DRC 20261113 17:21:16 QK2UwfND RuleValidator.cpp:408 Info verifyRVModel] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 8.19MB) 
+[DRC 20261113 17:21:16 QK2UwfND RuleValidator.cpp:266 Info verify] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 8.19MB) 
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:894 Info printTableList] +----------------+---------------+-------+ 
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:894 Info printTableList] | violation_type | violation_num |  prop | 
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:894 Info printTableList] +----------------+---------------+-------+ 
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:894 Info printTableList] |          Total |             0 | 0.00% | 
+[DRC 20261113 17:21:16 QK2UwfND Utility.hpp:894 Info printTableList] +----------------+---------------+-------+ 
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:1495 Info outputViolationFile] Starting...
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:1554 Info outputViolationFile] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 0.00MB) 
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:210 Info destroyDRC] Starting...
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:66 Info output] Starting...
+[DRC 20261113 17:21:16 QK2UwfND DataManager.cpp:68 Info output] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 0.00MB) 
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:218 Info destroyDRC] Completed (elapsed = 00:00:00, cpu = 00:00:00, mem = 0.00MB) 
+[DRC 20261113 17:21:16 QK2UwfND Logger.hpp:62 Info printLogFilePath] The log file path is '/work/result/report/drc.rpt.artifacts/drc.log'!
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:222 Info destroyDRC] >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:223 Info destroyDRC] ______________________________   _____________________   _____________________  __  
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:224 Info destroyDRC] ___(_)__  __ \__  __ \_  ____/   ___  ____/___  _/__  | / /___  _/_  ___/__  / / /
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:225 Info destroyDRC] __  /__  / / /_  /_/ /  /        __  /_    __  / __   |/ / __  / _____ \__  /_/ /  
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:226 Info destroyDRC] _  / _  /_/ /_  _, _// /___      _  __/   __/ /  _  /|  / __/ /  ____/ /_  __  /    
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:227 Info destroyDRC] /_/  /_____/ /_/ |_| \____/      /_/      /___/  /_/ |_/  /___/  /____/ /_/ /_/    
+[DRC 20261113 17:21:16 QK2UwfND DRCInterface.cpp:228 Info destroyDRC] >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

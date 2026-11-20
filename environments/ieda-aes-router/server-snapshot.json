@@ -1,0 +1,149 @@
+{
+  "source_binary": "/unavailable/upstream/AiEDA/iEDA.ai/bin/iEDA",
+  "binary": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/iEDA",
+  "source_binary_sha256": "a4f0682fd0fd7c19f879d5176dbebed4f900eb8f567a7700d1455d91c6c32173",
+  "binary_sha256": "9f6c91ac6a58a00feaa63ba5eef37cfd240a4b60dd1fedba0654439763a3a6f8",
+  "rpath_to_runpath_tag_offsets": [
+    46869168
+  ],
+  "shared_libraries": [
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libmemory.so",
+      "source_sha256": "8ab95598e46b75763249ad7e4560fbac7e977d7d00ffe66dc871ba8caf984e23",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libmemory.so",
+      "sha256": "0f6c6f91eac083eb8955c352584b899e81aa9230ab0f23b010e5e8c135fec223",
+      "rpath_to_runpath_tag_offsets": [
+        35760
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libfeature_db.so",
+      "source_sha256": "2de304833ab4d63ed029ddde59497d477364ab6d678d1649a239c733c1f05d66",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libfeature_db.so",
+      "sha256": "66aefa37b011351e53066caccaa309bea088ae34a20117a31152e56fd6d99a56",
+      "rpath_to_runpath_tag_offsets": [
+        24072
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libeval_db.so",
+      "source_sha256": "ba012a30f348d0d01ca41511b03d4b37f649fa952ed67fbb7131540d19efec7e",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libeval_db.so",
+      "sha256": "75a5be5750ff9fa52eb900c069eec7172a6e18cfc703125c825517476757bf8a",
+      "rpath_to_runpath_tag_offsets": [
+        28016
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libgraph.so",
+      "source_sha256": "a1737f0ab023e428b2529ce42140e3a2131e593760ca6f02751ef51ca204ab7a",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libgraph.so",
+      "sha256": "50b3efc4b8a5904ef6116add2da8dba3d1ca61f86b3226764b93e866fe51e84e",
+      "rpath_to_runpath_tag_offsets": [
+        32024
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libreport_table.so",
+      "source_sha256": "09f998dfc9a575ee25ac75ae14d29f5b6c1fa7a451f7621b438ce323848173e4",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libreport_table.so",
+      "sha256": "6fac53282f35c5c6918727ca25ec43c4605f2368c143b5eb5085468a1c3c4ede",
+      "rpath_to_runpath_tag_offsets": [
+        101464
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libtcl.so",
+      "source_sha256": "29ad35dcbfa05eda8a3595de6c87d89c908fb85a089de0c1053a253f67372b56",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libtcl.so",
+      "sha256": "cb2ad3c99207e50c14d711682739c1c08e7f08d9412d438a3cf6ebab03e0346e",
+      "rpath_to_runpath_tag_offsets": [
+        105184
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libir_solver.so",
+      "source_sha256": "fde50a2b02385514835fccfcd84de3553dd97f9bdd1bd9d1ba73b3f3f0e4de9d",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libir_solver.so",
+      "sha256": "bc204322ef7e0453783fae3dc246f75ac97771ec3834e673492c0571fc5bc6a1",
+      "rpath_to_runpath_tag_offsets": [
+        416224
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libIdbBuilder.so",
+      "source_sha256": "91ec9fd6836cb59709e430ae31400d5ab7f1882ab006028609d5c912a390f1e0",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libIdbBuilder.so",
+      "sha256": "cc5a784ddb804ac298bcb7ffc3d383e17758c15f7ac325e49f3e12d9b7ebce96",
+      "rpath_to_runpath_tag_offsets": [
+        4336432
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libdef_service.so",
+      "source_sha256": "4d083cd538dcb9705fc68d131a812839c2b2d7fb3e2060fbc40bf4a84afd3487",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libdef_service.so",
+      "sha256": "c31ed2fcf9826b96a96db0fc5a980a0fff960fa618ded54d540eed2e8e395567",
+      "rpath_to_runpath_tag_offsets": [
+        15720
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/liblef_service.so",
+      "source_sha256": "561c93d2c52f598000578edc2de9b18631dc354b60ce121ef8aad6b0502b633e",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/liblef_service.so",
+      "sha256": "7549c554345cf6291f2e7a69860f87cae62dfe5b11389facdc88d7046f51ee46",
+      "rpath_to_runpath_tag_offsets": [
+        15672
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libidb.so",
+      "source_sha256": "04cefa9aefcad9d07b18b9beb2a00e38205390ea1ec9dd80177a17024375a4f2",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libidb.so",
+      "sha256": "ded27ee51896da38b0e6fecde9cca9a22705dd505685e1083492f621fa627e58",
+      "rpath_to_runpath_tag_offsets": [
+        551616
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libgeometry_db.so",
+      "source_sha256": "2942c0cf08e25b77eaaec1255f2739efbf9b961136ebf4ad2a7dc466870514d1",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libgeometry_db.so",
+      "sha256": "e465fac76666e0b6eedcc274e6477d5d8165b8033b5a2628806b98afc7da9a80",
+      "rpath_to_runpath_tag_offsets": [
+        27968
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libstr.so",
+      "source_sha256": "8613da0103d6870e9c70b672e872bf8778a236ff84557feb5f70831a30b48047",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libstr.so",
+      "sha256": "0a2d5a8ec9155d0a68487d4545e3509632fc066f1a73a66812c5a99f9c38249f",
+      "rpath_to_runpath_tag_offsets": [
+        190312
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/libusage.so",
+      "source_sha256": "f69dcf295f3515a5f7bdc6a116c4a18b3a2ac16b3274810d4c4dc23b7e32731e",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libusage.so",
+      "sha256": "e68b649e79ea6929369a0c68e99601e608d96f10fb0cce76574016452bf7e2ee",
+      "rpath_to_runpath_tag_offsets": [
+        15616
+      ]
+    },
+    {
+      "source": "/unavailable/upstream/AiEDA/iEDA.ai/build/lib/liblog.so",
+      "source_sha256": "8960a9a76f5cde766711645f21f2593273fa0fc9c37308417a8530ef607ac708",
+      "snapshot": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/liblog.so",
+      "sha256": "731329cc6d9229f7ee510af23f2f557e3d0a52f90658742a43f5132afa25ebd1",
+      "rpath_to_runpath_tag_offsets": [
+        23664
+      ]
+    }
+  ],
+  "library_path": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib",
+  "policy": "Reuse this snapshot for the requested binary path; external rebuilds do not replace it.",
+  "verified_ldd": "\tlinux-vdso.so.1 (0x00007ffcb7880000)\n\tlibcurl.so.4 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libcurl.so.4 (0x00007a133ff11000)\n\tlibmemory.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libmemory.so (0x00007a1342db3000)\n\tlibfeature_db.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libfeature_db.so (0x00007a1342dab000)\n\tlibgomp.so.1 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libgomp.so.1 (0x00007a1342d55000)\n\tlibeval_db.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libeval_db.so (0x00007a1342d4a000)\n\tlibgraph.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libgraph.so (0x00007a1342d41000)\n\tlibreport_table.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libreport_table.so (0x00007a1342d26000)\n\tlibtcl.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libtcl.so (0x00007a1342d0b000)\n\tlibtcl8.6.so => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libtcl8.6.so (0x00007a133fd4e000)\n\tlibgmp.so.10 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libgmp.so.10 (0x00007a133fca6000)\n\tlibir_solver.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libir_solver.so (0x00007a133fc3f000)\n\tlibIdbBuilder.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libIdbBuilder.so (0x00007a133f800000)\n\tlibz.so.1 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libz.so.1 (0x00007a1342cee000)\n\tlibdef_service.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libdef_service.so (0x00007a1342ce8000)\n\tliblef_service.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/liblef_service.so (0x00007a1342ce0000)\n\tlibidb.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libidb.so (0x00007a133f777000)\n\tlibgeometry_db.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libgeometry_db.so (0x00007a1342cd8000)\n\tlibstr.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libstr.so (0x00007a133f746000)\n\tlibtbb.so.12 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libtbb.so.12 (0x00007a133f6e4000)\n\tlibusage.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/libusage.so (0x00007a133fc39000)\n\tliblog.so => /srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/lib/liblog.so (0x00007a133fc31000)\n\tlibglog.so.2 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libglog.so.2 (0x00007a133f690000)\n\tlibgflags.so.2.2 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libgflags.so.2.2 (0x00007a133f663000)\n\tlibunwind.so.8 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libunwind.so.8 (0x00007a133f647000)\n\tlibstdc++.so.6 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libstdc++.so.6 (0x00007a133f200000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007a133f547000)\n\tlibgcc_s.so.1 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/libgcc_s.so.1 (0x00007a133f51a000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007a133ee00000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007a1342dbf000)\n\tlibnghttp2.so.14 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/./libnghttp2.so.14 (0x00007a133f4ee000)\n\tlibssh2.so.1 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/./libssh2.so.1 (0x00007a133f4a0000)\n\tlibssl.so.3 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/./libssl.so.3 (0x00007a133f103000)\n\tlibcrypto.so.3 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/./libcrypto.so.3 (0x00007a133e600000)\n\tlibgssapi_krb5.so.2 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/./libgssapi_krb5.so.2 (0x00007a133f0ae000)\n\tlibzstd.so.1 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/./libzstd.so.1 (0x00007a133ece7000)\n\tlibpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007a133f49b000)\n\tlibdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007a133f496000)\n\tlibkrb5.so.3 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/././libkrb5.so.3 (0x00007a133e526000)\n\tlibk5crypto.so.3 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/././libk5crypto.so.3 (0x00007a133f095000)\n\tlibcom_err.so.3 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/././libcom_err.so.3 (0x00007a133f490000)\n\tlibkrb5support.so.0 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/././libkrb5support.so.0 (0x00007a133f482000)\n\tlibkeyutils.so.1 => /unavailable/upstream/AiEDA/micromamba/envs/ecc/lib/././libkeyutils.so.1 (0x00007a133f08e000)\n\tlibresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007a133f07b000)\n"
+}

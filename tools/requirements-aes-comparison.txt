@@ -1,0 +1,2 @@
+# Streaming complete native DRC records; pinned to the tested Windows runtime.
+ijson==3.6.0

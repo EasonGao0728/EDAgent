@@ -1,0 +1,123 @@
+{
+  "schema_version": "knowledge-registry-v1",
+  "entries": [
+    {
+      "path": "dsh/knowledge/real-ieda.md",
+      "sha256": "2c64248bdc531e68f26dd53ee6d2b7ba1976a337f3cb28c0db3c31010a49d9f1",
+      "case_ids": [
+        "ibench_gcd_legacy",
+        "sky130_gcd"
+      ],
+      "goals": [
+        "placement_def"
+      ],
+      "backend_versions": [
+        "ieda-manifest-stages-v3-server-d9ae2896",
+        "ieda-manifest-stages-v3-server-d9ae2896-ssh-bwrap-quality-v2",
+        "ieda-manifest-stages-v3-server-d9ae2896-ssh-bwrap-v1"
+      ],
+      "reviewed_at": "2026-11-12"
+    },
+    {
+      "path": "dsh/knowledge/sram-ieda.md",
+      "sha256": "51f760a217ca274b47617561f8ce71ae4289f92fa02aa7afde7e4bfe30e98707",
+      "case_ids": [
+        "sky130_sram_pair"
+      ],
+      "goals": [
+        "placement_def"
+      ],
+      "backend_versions": [
+        "ieda-manifest-stages-v3-server-d9ae2896-sram-v1",
+        "ieda-manifest-stages-v3-server-d9ae2896-sram-v1-ssh-bwrap-quality-v2",
+        "ieda-manifest-stages-v3-server-d9ae2896-sram-v1-ssh-bwrap-v1"
+      ],
+      "reviewed_at": "2026-11-12"
+    },
+    {
+      "path": "dsh/knowledge/full-ieda.md",
+      "sha256": "e6c3ceac0f5e81330734389d516c224ddaa0acec20aa4af470ebac2ce19088a5",
+      "case_ids": [
+        "ibench_gcd_legacy"
+      ],
+      "goals": [
+        "full_backend"
+      ],
+      "backend_versions": [
+        "ieda-manifest-stages-v3-server-d9ae2896-full-v1",
+        "ieda-manifest-stages-v3-server-d9ae2896-full-v1-ssh-bwrap-quality-v2",
+        "ieda-manifest-stages-v3-server-d9ae2896-full-v1-ssh-bwrap-v1"
+      ],
+      "reviewed_at": "2026-11-12"
+    },
+    {
+      "path": "dsh/knowledge/routed-ieda.md",
+      "sha256": "3579067cbfc0d94ef1ae12c3c14747c4edd00d1dea5f41c909517f3840e9dbee",
+      "case_ids": [
+        "ibench_gcd_legacy"
+      ],
+      "goals": [
+        "routed_def"
+      ],
+      "backend_versions": [
+        "ieda-manifest-stages-v3-server-d9ae2896-routed-v3-pdn",
+        "ieda-manifest-stages-v3-server-d9ae2896-routed-v3-pdn-ssh-bwrap-quality-v2",
+        "ieda-manifest-stages-v3-server-d9ae2896-routed-v3-pdn-ssh-bwrap-v1"
+      ],
+      "reviewed_at": "2026-11-12"
+    },
+    {
+      "path": "dsh/knowledge/aes-ieda.md",
+      "sha256": "774f8f622e261af34581e6223b2d81aa57b17bfc9f2962fb59eb01d6bd7b4ab7",
+      "case_ids": [
+        "aes_core_sky130_t",
+        "aes_legacy",
+        "aes_sky130_t"
+      ],
+      "goals": [
+        "full_backend"
+      ],
+      "backend_versions": [
+        "aes-hd-native-full-v5-drc-artifact-budget",
+        "aes-hd-native-full-v5-drc-artifact-budget-ssh-bwrap-quality-v2",
+        "aes-hd-native-full-v5-drc-artifact-budget-ssh-bwrap-v1"
+      ],
+      "reviewed_at": "2026-11-12"
+    },
+    {
+      "path": "dsh/knowledge/main-decision.md",
+      "sha256": "87e755daa7b8bc96455fb8d7db1304025008be135d388ddc14cac2de32e90382",
+      "case_ids": [
+        "aes_core_sky130_t",
+        "aes_legacy",
+        "aes_sky130_t",
+        "ibench_gcd_legacy",
+        "sky130_gcd",
+        "sky130_sram_pair"
+      ],
+      "goals": [
+        "full_backend",
+        "placement_def",
+        "routed_def"
+      ],
+      "backend_versions": [
+        "aes-hd-native-full-v5-drc-artifact-budget",
+        "aes-hd-native-full-v5-drc-artifact-budget-ssh-bwrap-quality-v2",
+        "aes-hd-native-full-v5-drc-artifact-budget-ssh-bwrap-v1",
+        "ieda-manifest-stages-v3-server-d9ae2896",
+        "ieda-manifest-stages-v3-server-d9ae2896-full-v1",
+        "ieda-manifest-stages-v3-server-d9ae2896-full-v1-ssh-bwrap-quality-v2",
+        "ieda-manifest-stages-v3-server-d9ae2896-full-v1-ssh-bwrap-v1",
+        "ieda-manifest-stages-v3-server-d9ae2896-routed-v3-pdn",
+        "ieda-manifest-stages-v3-server-d9ae2896-routed-v3-pdn-ssh-bwrap-quality-v2",
+        "ieda-manifest-stages-v3-server-d9ae2896-routed-v3-pdn-ssh-bwrap-v1",
+        "ieda-manifest-stages-v3-server-d9ae2896-sram-v1",
+        "ieda-manifest-stages-v3-server-d9ae2896-sram-v1-ssh-bwrap-quality-v2",
+        "ieda-manifest-stages-v3-server-d9ae2896-sram-v1-ssh-bwrap-v1",
+        "ieda-manifest-stages-v3-server-d9ae2896-ssh-bwrap-quality-v2",
+        "ieda-manifest-stages-v3-server-d9ae2896-ssh-bwrap-v1"
+      ],
+      "reviewed_at": "2026-11-12"
+    }
+  ]
+}

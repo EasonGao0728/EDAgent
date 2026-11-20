@@ -1,0 +1,142 @@
+{
+  "schema_version": "ieda.drc.coverage.v1",
+  "status": "partial_clean",
+  "check_profile": "all_loaded_rules",
+  "signoff_clean": false,
+  "execution_started": true,
+  "violation_count": 0,
+  "selection_mode": "all_loaded_rules",
+  "coverage_basis": "ieda_engine_families_and_technology_loaded_rules_only",
+  "foundry_coverage_table_loaded": false,
+  "requested": [],
+  "checked": [
+    "cut_short",
+    "maximum_width",
+    "metal_short",
+    "minimum_area",
+    "minimum_width",
+    "nonsufficient_metal_overlap",
+    "off_grid_or_wrong_way",
+    "out_of_die",
+    "parallel_run_length_spacing",
+    "same_layer_cut_spacing"
+  ],
+  "skipped": [],
+  "unsupported": [
+    "adjacent_cut_spacing",
+    "corner_fill_spacing",
+    "corner_spacing",
+    "cut_eol_spacing",
+    "different_layer_cut_spacing",
+    "enclosure",
+    "enclosure_edge",
+    "enclosure_parallel",
+    "end_of_line_spacing",
+    "floating_patch",
+    "jog_to_jog_spacing",
+    "max_via_stack",
+    "min_hole",
+    "min_step",
+    "minimum_cut",
+    "notch_spacing"
+  ],
+  "refused": [],
+  "runtime": {
+    "runtime_seconds": 0.04269637167453766,
+    "thread_count": 4,
+    "cluster_count": 4,
+    "verified_cluster_count": 4,
+    "stale_cluster_cache_count": 0,
+    "peak_rss_mb": 65.536,
+    "per_rule": {
+      "cut_short": {
+        "runtime_seconds": 0.0006282655522227287,
+        "cluster_count": 4,
+        "violation_count": 0
+      },
+      "maximum_width": {
+        "runtime_seconds": 6.556138396263123e-05,
+        "cluster_count": 4,
+        "violation_count": 0
+      },
+      "metal_short": {
+        "runtime_seconds": 0.007495147176086903,
+        "cluster_count": 4,
+        "violation_count": 0
+      },
+      "minimum_area": {
+        "runtime_seconds": 0.0037568584084510803,
+        "cluster_count": 4,
+        "violation_count": 2
+      },
+      "minimum_width": {
+        "runtime_seconds": 0.003965401090681553,
+        "cluster_count": 4,
+        "violation_count": 0
+      },
+      "nonsufficient_metal_overlap": {
+        "runtime_seconds": 0.0026793573051691055,
+        "cluster_count": 4,
+        "violation_count": 0
+      },
+      "off_grid_or_wrong_way": {
+        "runtime_seconds": 0.006685078144073486,
+        "cluster_count": 4,
+        "violation_count": 0
+      },
+      "out_of_die": {
+        "runtime_seconds": 2.432987093925476e-05,
+        "cluster_count": 4,
+        "violation_count": 0
+      },
+      "parallel_run_length_spacing": {
+        "runtime_seconds": 0.006297974847257137,
+        "cluster_count": 4,
+        "violation_count": 0
+      },
+      "same_layer_cut_spacing": {
+        "runtime_seconds": 0.0008449871093034744,
+        "cluster_count": 4,
+        "violation_count": 0
+      }
+    },
+    "attached": true
+  },
+  "foundry_coverage": {
+    "source_path": "",
+    "valid": true,
+    "pdk": "",
+    "deck": {
+      "id": "",
+      "path": "",
+      "resolved_path": "",
+      "sha256": "",
+      "actual_sha256": "",
+      "sha256_verification": "declared_format_only",
+      "identity_verified": false
+    },
+    "rules": [],
+    "errors": [],
+    "checked": [],
+    "skipped": [],
+    "partial": [],
+    "unsupported": [],
+    "runtime_errors": [],
+    "total_rule_count": 0,
+    "fully_implemented_rule_count": 0,
+    "partial_rule_count": 0,
+    "missing_rule_count": 0
+  },
+  "gates": {
+    "G11": {
+      "verdict": "incomplete",
+      "blocking_reasons": [
+        "foundry_coverage_table_not_loaded",
+        "calibre_alignment_not_attached"
+      ]
+    },
+    "G14": {
+      "verdict": "pass"
+    }
+  }
+}

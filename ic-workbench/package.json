@@ -1,0 +1,7 @@
+{
+  "name": "silicon-workbench",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.mjs", "check": "node --check server.mjs && node --check agent-runtime.mjs && node --check provider.mjs && node --check public/agent-app.js && node --check public/app.js", "test": "node --test test/*.test.mjs" }
+}

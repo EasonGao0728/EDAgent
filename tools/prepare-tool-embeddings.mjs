@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {pipeline,env} from '../.cache/tool-retrieval/node_modules/@huggingface/transformers/dist/transformers.node.mjs';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const config=JSON.parse(await fs.readFile(path.join(root,'dsh/embedding-config.json'),'utf8'));
+env.cacheDir=path.join(root,'.cache/tool-embeddings');
+const pipe=await pipeline('feature-extraction',config.model,{revision:config.revision,dtype:'q8',device:'cpu',session_options:{intraOpNumThreads:2,interOpNumThreads:1}});
+const t=await pipe('宏单元布局和布线工具检索',{pooling:'mean',normalize:true});
+console.log(JSON.stringify({model:config.model,revision:config.revision,dimensions:t.data.length,local_embedding_verified:true}));

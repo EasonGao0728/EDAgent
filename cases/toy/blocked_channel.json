@@ -1,0 +1,24 @@
+{
+  "adapter": "toy",
+  "case_id": "blocked_channel",
+  "description": "Teaching case: asymmetric macro sizes, fixed obstacles and IO connections.",
+  "units": "abstract_units",
+  "core": {"x": 0, "y": 0, "width": 100, "height": 80},
+  "grid": 1,
+  "min_spacing": 2,
+  "macros": [
+    {"id": "fixed_left", "x": 4, "y": 30, "width": 12, "height": 16, "fixed": true},
+    {"id": "large", "x": 70, "y": 50, "width": 18, "height": 16},
+    {"id": "small_1", "x": 70, "y": 8, "width": 8, "height": 8},
+    {"id": "small_2", "x": 25, "y": 60, "width": 8, "height": 8},
+    {"id": "medium", "x": 25, "y": 8, "width": 12, "height": 10}
+  ],
+  "ports": [{"id": "io_n", "x": 50, "y": 80}],
+  "blockages": [{"x": 45, "y": 0, "width": 10, "height": 32}],
+  "nets": [
+    {"id": "group", "nodes": ["large", "small_1", "small_2"], "weight": 7},
+    {"id": "left", "nodes": ["medium", "fixed_left"], "weight": 4},
+    {"id": "north", "nodes": ["large", "io_n"], "weight": 3},
+    {"id": "bridge", "nodes": ["medium", "small_2"], "weight": 2}
+  ]
+}

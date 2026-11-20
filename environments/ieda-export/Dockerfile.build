@@ -1,0 +1,4 @@
+FROM ubuntu:22.04@sha256:076e7bf82319619f28dd0aa9c02ab34b055ad37100395b4f49a2ffba04fb5e11
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirrors.ustc.edu.cn/ubuntu|g; s|http://security.ubuntu.com/ubuntu|http://mirrors.ustc.edu.cn/ubuntu|g' /etc/apt/sources.list && apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y --no-install-recommends build-essential cmake ninja-build zlib1g-dev libboost-dev ca-certificates && rm -rf /var/lib/apt/lists/*
+WORKDIR /work
+RUN apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=2 install -y --no-install-recommends libabsl-dev bison && rm -rf /var/lib/apt/lists/*

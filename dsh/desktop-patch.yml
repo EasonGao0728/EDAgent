@@ -1,0 +1,19 @@
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: aieda-chatgpt-desktop
+    model: gpt-6.1-sol
+    reasoningEffort: xhigh
+- insert:
+    - id: aieda-desktop-provider
+      name: file:///D:/aiEDA/dsh/desktop-provider.mjs
+    - id: preset-aieda-main
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: aieda-main
+        name: 宏布局主 Agent
+        description: 主布局：网表导入、分阶段工具调用、独立验证与 DEF 回读
+        order: 20
+        plugins:
+          - name: file:///D:/aiEDA/dsh/desktop-tools.mjs
+

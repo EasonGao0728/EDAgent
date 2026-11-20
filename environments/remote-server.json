@@ -1,0 +1,14 @@
+{
+  "schema_version": "ieda_remote_execution_v1",
+  "enabled": false,
+  "ssh_host": "eda-worker",
+  "server_root": "/srv/edagent/main-agent-remote-v1",
+  "server_uid": 1015,
+  "execution_location": "server",
+  "local_fallback": false,
+  "concurrency": 1,
+  "cpu_threads_max": 4,
+  "address_space_gib_max": 8,
+  "resource_note": "Linux CPU affinity and per-process RLIMIT_AS, not Docker cgroup RSS equivalence",
+  "existing_core_task_policy": "stopped; no automatic migration or resume"
+}

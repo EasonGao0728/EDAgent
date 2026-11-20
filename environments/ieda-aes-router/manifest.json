@@ -1,0 +1,7 @@
+{
+  "source": "/srv/benchmarks/iBench/benchmarks/tools/runtime_snapshots_v2/iEDA-a4f0682fd0fd7c19/iEDA",
+  "binary_sha256": "9f6c91ac6a58a00feaa63ba5eef37cfd240a4b60dd1fedba0654439763a3a6f8",
+  "bytes": 67048392,
+  "shared_libraries": "All 15 snapshot libraries match original d9ae2896 runtime; retain verified portable loader and 57 libraries",
+  "scope": "Routing only; other native stages remain d9ae2896"
+}

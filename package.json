@@ -1,0 +1,16 @@
+{
+  "name": "edagent-workbench",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node ic-workbench/server.mjs",
+    "test": "node --test ic-workbench/test/*.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+  }
+}
