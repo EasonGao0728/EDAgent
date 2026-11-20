@@ -103,4 +103,12 @@ else:
                     break
             except (OSError, ValueError, KeyError):
                 continue
+        if case_id not in readiness:
+            try:
+                failure=json.loads((Path("runs")/("structural-"+case_id)/"import-failure.json").read_bytes())
+                if (failure["case"]==case_id and failure["source_sha256"]==case["assets"]["netlist"]["sha256"]
+                    and failure["reason"]=="native_allocation_failure" and failure["limit_gib"]==8):
+                    readiness[case_id]="原生导入内存不足 · 单进程地址空间上限 8 GiB"
+            except (OSError, ValueError, KeyError):
+                pass
     print(json.dumps(dict(online=runtime_status()["available"], cases=packages, jobs=len(active_jobs()), readiness=readiness)))
