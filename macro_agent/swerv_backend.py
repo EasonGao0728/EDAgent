@@ -50,6 +50,12 @@ def setup(work,reference):
     for name in ('logs','result/report','result/pl','result/cts','result/no','result/to','result/to_drv','result/to_hold','result/rt','result/drc','result/timing'):(work/name).mkdir(parents=True,exist_ok=True)
     write(work/'run-start.json',{'time':time.time(),'wall_seconds':7200,'case_id':CASE})
 
+def previous_stage(stage,m):
+    if stage=="fanout" and not m["macro_placement"]["macros"]:
+        return "floorplan"
+    return PREVIOUS[stage]
+
+
 def script(stage,m):
     pre='flow_init -config /work/config/flow_config.json\ndb_init -config /work/config/db_default_config.json\n'
     pre+=f'tech_lef_init -path /reference/{m["tech_lef"]}\nlef_init -path [list '+ ' '.join('/reference/'+p for p in m['cell_lefs'])+']\n'
@@ -59,9 +65,12 @@ def script(stage,m):
         if stage=='floorplan':
             body+='init_floorplan -die_area {'+' '.join(map(str,m['die_area_microns']))+'} -core_area {'+' '.join(map(str,m['core_area_microns']))+'} -core_site '+m['core_site']+'\n'
             for i,pitch in enumerate((280,380,280,560,560,560,1600,1600,3200,3200),1):body+=f'gern_track -layer metal{i} -x_start 190 -x_step {pitch} -y_start 140 -y_step {pitch}\n'
-            body+='auto_place_pins -layer metal5 -width 800 -height 800\nset_net -net_name clk -type CLOCK\n'
+            body+='auto_place_pins -layer metal5 -width 800 -height 800\n'
+            port=m.get('clock_port','clk')
+            if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*',port):raise ValueError('Invalid clock port')
+            body+=f'set_net -net_name {port} -type CLOCK\n'
     else:
-        body=pre+'def_init -path /work/result/'+PREVIOUS[stage]+'.def\n'
+        body=pre+'def_init -path /work/result/'+previous_stage(stage,m)+'.def\n'
         commands={'macro_placement':'init_pl -config /work/config/pl_default_config.json\nplacer_run_mp',
             'fanout':'run_no_fixfanout -config /work/config/no_default_config_fixfanout.json',
             'placement':'run_placer -config /work/config/pl_default_config.json','export_def':'',
@@ -228,21 +237,21 @@ def execute(stage,work,reference):
         if stage=='import_netlist':
             from .aes_netlist import verify
             _,buses=cells_and_buses(reference,m);v['import_check']=verify(reference/m['netlist'],artifact,buses)
-            if len(after['components'])!=6780:raise ValueError('Imported instance count changed')
+            if not v['import_check']['passed'] or len(after['components'])!=m.get('expected_instances',6780):raise ValueError('Imported instance count changed')
         elif stage=='macro_placement':
             v['independent_macro_check']=freeze_macros(work,reference,m);v['artifact_sha256']=sha(artifact)
         elif stage=='floorplan':
             before=read_def(work/'result/import_netlist.def')
             v['floorplan_preservation']={'passed':before['nets']==after['nets'] and set(before['pins'])==set(after['pins']) and before['components']==after['components']}
         else:
-            before=read_def(work/'result'/(PREVIOUS[stage]+'.def'))
+            before=read_def(work/'result'/(previous_stage(stage,m)+'.def'))
             v['transformation']=check(before,after,stage,BUFFERS,r'FILLCELL_X(1|2|4|8|16|32)')
         if stage in ('export_def','routed_readback'):
-            src=work/'result'/(PREVIOUS[stage]+'.def');v.update(readback_equal=read_def(src)==after and route_records(src)==route_records(artifact),readback_coverage=['parsed DEF semantics','per-net route records'])
+            src=work/'result'/(previous_stage(stage,m)+'.def');v.update(readback_equal=read_def(src)==after and route_records(src)==route_records(artifact),readback_coverage=['parsed DEF semantics','per-net route records'])
             if not v['readback_equal']:v['passed']=False
         if stage in ('legalization','filler','routed_readback'):
             v['geometry']=validate_placement(after,after,after,lefs,m)
-            if v['geometry']['hard_macros']!=3:v['geometry']['passed']=False
+            if v['geometry']['hard_macros']!=len(m['expected_macro_masters']):v['geometry']['passed']=False
         if stage=='routing':
             from .aes_reproduction import routing_observation
             v['routing_gate']=routing_observation(json.loads((work/'result/rt/violation_reporter/route_summary.json').read_text()))
@@ -253,7 +262,7 @@ def execute(stage,work,reference):
             from .aes_reproduction import drc_observation
             v['drc_gate']=drc_observation(json.loads((work/'result/report/drc_summary.json').read_text()),report_dir=work/'result/report',producer_sha256=BINARY_SHA256)
         if stage=='timing':
-            p=work/'result/timing'/(m['top']+'.rpt');v['timing']={'passed':p.is_file() and 'core_clock' in p.read_text(),'parasitics':'No extracted SPEF; diagnostic only','signoff_clean':False,'report':str(p)}
+            p=work/'result/timing'/(m['top']+'.rpt');v['timing']={'passed':p.is_file() and m.get('clock_name','core_clock') in p.read_text(),'parasitics':'No extracted SPEF; diagnostic only','signoff_clean':False,'report':str(p)}
         if stage in ('to_drv','to_hold'):
             p=work/'result/to/ito_pass_report.json';data=json.loads(p.read_text());passes=[x for x in data.get('passes',[]) if x.get('phase')==stage[3:]]
             v['native_optimization']={'passed':len(passes)==1 and passes[0].get('status')=='OK' and not passes[0].get('rolled_back'),'passes':passes}

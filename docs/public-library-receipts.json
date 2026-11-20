@@ -1,0 +1,128 @@
+[
+  {
+    "file": "nangate45/lef/fakeram45_256x95.lef",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lef/fakeram45_256x95.lef",
+    "sha256": "afbe00bd14ddabd4ccc48d4c51d50809696834747e8de9cf8b24129bcdb19a4f"
+  },
+  {
+    "file": "nangate45/lef/fakeram45_256x96.lef",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lef/fakeram45_256x96.lef",
+    "sha256": "105674a9751a29cfefd16895a4ceef6daf05a15afa5c198af2584fcd80544b5d"
+  },
+  {
+    "file": "nangate45/lef/fakeram45_32x64.lef",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lef/fakeram45_32x64.lef",
+    "sha256": "e0007608c5373918db19e645a1a7aa3a3d0d089309885a20412114a7536a1603"
+  },
+  {
+    "file": "nangate45/lef/fakeram45_512x64.lef",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lef/fakeram45_512x64.lef",
+    "sha256": "2d88d8204b5990182efad59f783c62253395a7a11c60b2c998a0b0088f496f62"
+  },
+  {
+    "file": "nangate45/lef/fakeram45_64x15.lef",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lef/fakeram45_64x15.lef",
+    "sha256": "526de533cdec659d926b658a9cb41d44cdcf8c3f64d4854ac00a58854b9d2a96"
+  },
+  {
+    "file": "nangate45/lef/fakeram45_64x7.lef",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lef/fakeram45_64x7.lef",
+    "sha256": "dff8ccf9124e87c68887d864a54d4991a022cf8bc48d947bdb0c6808880ddf0d"
+  },
+  {
+    "file": "nangate45/lef/fakeram45_64x96.lef",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lef/fakeram45_64x96.lef",
+    "sha256": "242402aea41d73efea77e1fd7b86ebe066466f3c3eb9b67d54520c9d9cb51478"
+  },
+  {
+    "file": "nangate45/lib/fakeram45_256x95.lib",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lib/fakeram45_256x95.lib",
+    "sha256": "a8bb6321ca273617790a2ea3d024c04ae7013351b010012b00c08cddffab0cc7"
+  },
+  {
+    "file": "nangate45/lib/fakeram45_256x96.lib",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lib/fakeram45_256x96.lib",
+    "sha256": "549a865aaee23fdb2009c73bc79cadbe91ccc3e5a19dabe8b97ca6512b1fb33f"
+  },
+  {
+    "file": "nangate45/lib/fakeram45_32x64.lib",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lib/fakeram45_32x64.lib",
+    "sha256": "78749bfc16598494fb7c10491d96f5e6dbcb155afc8844687bd5c18109d79652"
+  },
+  {
+    "file": "nangate45/lib/fakeram45_512x64.lib",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lib/fakeram45_512x64.lib",
+    "sha256": "52bec9c35e3ed922459e336aa0e3f9a9e90c1caff6a6d9fff1743902e00e5dce"
+  },
+  {
+    "file": "nangate45/lib/fakeram45_64x15.lib",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lib/fakeram45_64x15.lib",
+    "sha256": "ad3f23637f276d65f8e2b44037a89feee8c4970b866492da8e6150395e6ef5f9"
+  },
+  {
+    "file": "nangate45/lib/fakeram45_64x7.lib",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lib/fakeram45_64x7.lib",
+    "sha256": "ba1159fae40f3a57bc261eca0225c2a0453edf911e8a66a427c395dffe84dfe7"
+  },
+  {
+    "file": "nangate45/lib/fakeram45_64x96.lib",
+    "revision": "73c804d45dc4084b05e0536dab69053b3bf9e591",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/73c804d45dc4084b05e0536dab69053b3bf9e591/flow/platforms/nangate45/lib/fakeram45_64x96.lib",
+    "sha256": "86fa0230648545219a13bf78e1d9a03892d21f953d63e1702df5beb35417456e"
+  },
+  {
+    "file": "asap7/lef/asap7_tech_1x_201209.lef",
+    "revision": "5c9af09cf9bd79aa9f2864f9b721b31b659465f5",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/5c9af09cf9bd79aa9f2864f9b721b31b659465f5/flow/platforms/asap7/lef/asap7_tech_1x_201209.lef",
+    "sha256": "90da9af246a79ad11d2704019b0c1ec6d000442030f16a1dd8bc72c3949f6935"
+  },
+  {
+    "file": "asap7/lef/asap7sc7p5t_27_R_1x_201211.lef",
+    "revision": "5c9af09cf9bd79aa9f2864f9b721b31b659465f5",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/5c9af09cf9bd79aa9f2864f9b721b31b659465f5/flow/platforms/asap7/lef/asap7sc7p5t_27_R_1x_201211.lef",
+    "sha256": "558b2129232a363e9b0ea85e95e56855fc6ac753265a693fd8f8bbfd54c6a5c6"
+  },
+  {
+    "file": "asap7/lib/asap7sc7p5t_AO_RVT_TT_nldm_201020.lib",
+    "revision": "5c9af09cf9bd79aa9f2864f9b721b31b659465f5",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/5c9af09cf9bd79aa9f2864f9b721b31b659465f5/flow/platforms/asap7/lib/asap7sc7p5t_AO_RVT_TT_nldm_201020.lib",
+    "sha256": "67fc9092e3489ddafa8879f9e3d853baf967f5ad1841c89e738f443faa5dce71"
+  },
+  {
+    "file": "asap7/lib/asap7sc7p5t_INVBUF_RVT_TT_nldm_201020.lib",
+    "revision": "5c9af09cf9bd79aa9f2864f9b721b31b659465f5",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/5c9af09cf9bd79aa9f2864f9b721b31b659465f5/flow/platforms/asap7/lib/asap7sc7p5t_INVBUF_RVT_TT_nldm_201020.lib",
+    "sha256": "31cd4c3051effe0981e04b40d1d4bb46f783d7bfb781384174e1c7915c06b1ab"
+  },
+  {
+    "file": "asap7/lib/asap7sc7p5t_OA_RVT_TT_nldm_201020.lib",
+    "revision": "5c9af09cf9bd79aa9f2864f9b721b31b659465f5",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/5c9af09cf9bd79aa9f2864f9b721b31b659465f5/flow/platforms/asap7/lib/asap7sc7p5t_OA_RVT_TT_nldm_201020.lib",
+    "sha256": "459e9c10f7405ca160afc267249c9e011acc6ee5bbf933c5674a145a29adf2d3"
+  },
+  {
+    "file": "asap7/lib/asap7sc7p5t_SEQ_RVT_TT_nldm_201020.lib",
+    "revision": "5c9af09cf9bd79aa9f2864f9b721b31b659465f5",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/5c9af09cf9bd79aa9f2864f9b721b31b659465f5/flow/platforms/asap7/lib/asap7sc7p5t_SEQ_RVT_TT_nldm_201020.lib",
+    "sha256": "ce0f9f1fab6edb2a854163ef0ef1ef36d69d67e88b7e459eb9f1a6c58504e5b0"
+  },
+  {
+    "file": "asap7/lib/asap7sc7p5t_SIMPLE_RVT_TT_nldm_201020.lib",
+    "revision": "5c9af09cf9bd79aa9f2864f9b721b31b659465f5",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/5c9af09cf9bd79aa9f2864f9b721b31b659465f5/flow/platforms/asap7/lib/asap7sc7p5t_SIMPLE_RVT_TT_nldm_201020.lib",
+    "sha256": "ffb165a2ccea20d9e1679cd7dc0f669ca2138060fa6ead4995b6d4e6dbff4ede"
+  }
+]

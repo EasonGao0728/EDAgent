@@ -70,4 +70,20 @@ else:
                 packages.append(case)
         except (OSError, ValueError):
             continue
-    print(json.dumps(dict(online=runtime_status()["available"], cases=packages, jobs=len(active_jobs()))))
+    readiness = {}
+    for case in CATALOG:
+        case_id = case["id"]
+        if case["pdk"] == "ics55":
+            readiness[case_id] = "等待 ICS55 工艺库授权"
+            continue
+        for prefix, label in (("structural-", "网表端点已核验"), ("qualification-", "已生成导入 DEF")):
+            receipt = Path("runs") / (prefix+case_id) / "import.json"
+            try:
+                evidence = json.loads(receipt.read_bytes())
+                if (evidence["case"] == case_id and evidence["stage"] == "import_netlist"
+                        and case["assets"]["netlist"]["sha256"] in evidence["inputs"].values()):
+                    readiness[case_id] = label
+                    break
+            except (OSError, ValueError, KeyError):
+                continue
+    print(json.dumps(dict(online=runtime_status()["available"], cases=packages, jobs=len(active_jobs()), readiness=readiness)))

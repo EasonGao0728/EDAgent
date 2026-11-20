@@ -115,7 +115,8 @@ function drawCases(){
   $('#case-rows').innerHTML=rows.map(p=>{
     const verified=remote?.online&&remote.cases.includes(p.id);
     const bound=s.task?.contract?.case_id, blocked=bound&&bound!==p.id;
-    const detail=[p.size,p.pdk,p.category,goalLabel(p)].filter(Boolean).join(' · ');
+    const progress=remote?.readiness?.[p.id];
+    const detail=[p.size,p.pdk,p.category,goalLabel(p),progress].filter(Boolean).join(' · ');
     return `<div class="case-row"><div><strong>${esc(p.id)}</strong><small>${esc(detail)}</small><small>${p.cells.toLocaleString()} 个标准单元 · <b>${p.macros} 个宏</b></small></div><button class="btn subtle" aria-label="${esc('选用 '+p.id)}" data-use-case="${esc(p.id)}" ${verified&&!blocked?'':'disabled'}>${blocked?'需新会话':verified?'选用':remote?.online?'文件待核验':'待连接'}</button></div>`;
   }).join('')||'<p class="panel-note">没有匹配的案例。请调整筛选条件。</p>';
 }
