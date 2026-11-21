@@ -17,8 +17,12 @@ jobs:
       - run: python -m unittest discover -s tests -p test_core.py -v
       - run: python -m unittest discover -s tests -p test_catalog_qualification.py -v
       - run: python -m unittest discover -s tests -p test_case_admission_budget.py -v
+      - run: python -m unittest discover -s tests -p test_planning_budget.py -v
+      - run: python -m unittest discover -s tests -p test_dsh_model_selection.py -v
       - run: python -m unittest discover -s tests -p test_buffer_output_pin.py -v
       - run: python -m unittest discover -s tests -p test_def_io_compat.py -v
+      - run: python -m unittest discover -s tests -p test_chatgpt.py -k ProtocolTests -v
+      - run: node --test dsh/model-recovery.test.mjs dsh/catalog-read-error.test.mjs
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm --prefix ic-workbench run check

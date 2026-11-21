@@ -53,7 +53,10 @@ export function createServer({hub=new AgentHub()}={}){let ready;return http.crea
   res.setHeader('Referrer-Policy','no-referrer');
   const url=new URL(req.url,`http://127.0.0.1:${port}`);
   if(url.pathname==='/api/health')return json(res,200,{ok:true,edaConnected:null,source:'shared-dsh-main-agent',execution:'remote-server',defaultModel:'gpt-6-astra',defaultEffort:'high'});
-  if(req.method==='GET' && url.pathname==='/api/remote-status')return json(res,200,await remoteStatus());
+  if(req.method==='GET' && url.pathname==='/api/remote-status'){
+    const remote=await remoteStatus();
+    return json(res,200,{...remote,native_jobs:remote.jobs,active_agent_sessions:hub.active.size});
+  }
   if(req.method==='GET' && url.pathname==='/api/case-packages')return json(res,200,{packages});
   if(url.pathname.startsWith('/api/agent')||url.pathname.startsWith('/api/sessions')||url.pathname.startsWith('/api/providers')){
     try{

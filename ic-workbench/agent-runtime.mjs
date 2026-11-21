@@ -66,7 +66,7 @@ export function canDeliverCompletedTask(task,job){
   // Only a completed main-task finish can trigger automatic delivery. A
   // quality/repair job on an already completed parent still needs its review.
   return task?.goal_certified===true&&task.status==='target_met'&&!task.download_verified
-    &&job?.status==='completed'&&job.request?.operation==='decision_execute';
+    &&job?.status==='completed'&&(job.request?.operation==='decision_execute'||job.request?.operation==='run'||(job.request?.operation==='act'&&job.request.action==='finish'));
 }
 
 export class AgentHub{
@@ -80,7 +80,7 @@ export class AgentHub{
   session(id){const s=this.sessions.get(id);if(!s)throw Error('会话不存在');return s;}
   async create(){const s={id:'silicon-'+randomUUID(),title:'新设计会话',created:Date.now(),updated:Date.now(),revision:0,messages:[],events:[],uploads:[],task:null,job:null,artifacts:[],busy:false,model:DEFAULT_MODEL,effort:DEFAULT_EFFORT,provider:'subscription',status:{phase:'idle',title:'准备就绪',detail:'描述你的设计目标，或添加登记案例的输入文件。',at:Date.now()}};this.sessions.set(s.id,s);await this.save(s);return this.view(s);}
   save(s){s.updated=Date.now();s.revision++;const json=JSON.stringify(s,null,2);const target=path.join(this.directory,s.id+'.json');const next=(this.writes.get(s.id)||Promise.resolve()).then(async()=>{await fs.writeFile(target+'.tmp',json);for(let attempt=0;;attempt++){try{await fs.rename(target+'.tmp',target);break;}catch(e){if(!['EPERM','EACCES','EBUSY'].includes(e.code)||attempt>=6)throw e;await delay(25*(attempt+1));}}});this.writes.set(s.id,next.catch(()=>{}));return next;}
-  view(s){return {...s,messages:s.messages.filter(m=>['user','assistant'].includes(m.role)).map(m=>({id:m.id,role:m.role,text:m.content.filter(b=>b.type==='text').map(b=>b.text).join('\n'),attachments:m.content.filter(b=>b.type==='file').map(b=>({name:b.attachment.name,bytes:b.attachment.bytes})),model:m.model,effort:m.effort})).filter(m=>m.text||m.attachments.length),uploads:s.uploads.map(({hostPath,...ref})=>ref)};}
+  view(s){return {...s,activeAgentSessions:this.active.size,messages:s.messages.filter(m=>['user','assistant'].includes(m.role)).map(m=>({id:m.id,role:m.role,text:m.content.filter(b=>b.type==='text').map(b=>b.text).join('\n'),attachments:m.content.filter(b=>b.type==='file').map(b=>({name:b.attachment.name,bytes:b.attachment.bytes})),model:m.model,effort:m.effort})).filter(m=>m.text||m.attachments.length),uploads:s.uploads.map(({hostPath,...ref})=>ref)};}
   list(){return [...this.sessions.values()].sort((a,b)=>b.created-a.created).map(s=>({id:s.id,title:s.title,busy:s.busy,status:s.status,model:s.model,updated:s.updated}));}
   async event(s,type,data={}){const e={seq:s.events.length+1,at:Date.now(),type,...data};s.events.push(e);await this.save(s);return e;}
   async status(s,phase,title,detail){s.status={phase,title,detail,at:Date.now()};await this.event(s,'status',s.status);}
@@ -96,6 +96,8 @@ export class AgentHub{
         throw Error('该案例尚未通过当前服务器的完整后端验收，请选择“全流程已验证”的案例。');
       }
     }
+    // Admission awaits SSH. Recheck ownership before claiming the shared runner.
+    if(this.active.size||s.busy)throw Error('主 Agent 已有运行中的会话');
     if(turn.serverCase && s.task?.contract?.case_id && s.task.contract.case_id!==turn.serverCase)throw Error('当前会话已绑定其他设计，请新建会话');
     if(turn.serverCase)turn.text+='\n\n服务器输入包：'+turn.serverCase;
     const files=turn.attachments.map(id=>{const f=s.uploads.find(f=>f.attachmentId===id);if(!f)throw Error('附件不属于此会话');return {type:'file',attachment:f};});
@@ -181,6 +183,30 @@ export class AgentHub{
     const pending=s.task?.pending;await this.status(s,'waiting','服务器正在执行 '+(s.job.request?.operation==='quality_execute'?'hold 成本收益审查':s.job.request?.operation==='local_execute'?'局部过孔候选与质量验证':pending?.action||pending?.stage||s.task?.phase||'iEDA'),'job '+s.job.job_id+' · 宿主查询作业进度，不消耗模型轮询');
     await delay(this.pollMs,undefined,{signal});
   }}
+  async decisionBrief(s,task,signal){
+    if(!s.inputPackage||task?.contract?.goal!=='full_backend'||task.status!=='running'||!task.main_decision?.decision_required)return null;
+    const previous=s.decisionBrief;
+    if(previous?.state_id===task.state_id&&previous.choices.decision_state_id===task.main_decision.decision_state_id)return previous;
+    if(s.unavailableBrief===task.main_decision.decision_state_id)return null;
+    // Register the observation before asking for candidates: recording fresh
+    // evidence can advance the planner revision. Selection stays with the model.
+    const read=(operation,fields={})=>this.transport({mode:'task',run:taskRun(this.agent(s)),operation,...fields},signal);
+    let facts,choices;
+    try{
+      facts=await read('decision_inspect',{kind:'summary'});
+      choices=await read('decision_catalog');
+    }catch(error){
+      signal.throwIfAborted();
+      s.unavailableBrief=task.main_decision.decision_state_id;
+      await this.event(s,'decision_brief_unavailable',{stage:task.phase,error:error.message});
+      return null;
+    }
+    if(!facts?.evidence_id||facts.state_id!==task.state_id||choices.state_id!==task.state_id||
+       !facts.decision_state_id||facts.decision_state_id!==choices.decision_state_id)return null;
+    s.decisionBrief={state_id:task.state_id,facts,choices};
+    await this.event(s,'decision_brief',{stage:task.phase,state_id:task.state_id,evidence_id:facts.evidence_id,native_started:false});
+    return s.decisionBrief;
+  }
   async loop(s,signal){
     if(s.job&&!terminal.has(s.job.status))await this.monitor(s,signal);
     for(let i=0;i<40;i++){
@@ -188,17 +214,36 @@ export class AgentHub{
       let task=await this.transport({mode:'task',operation:'context',run:taskRun(this.agent(s))},signal);this.observeValue(s,task);
       if(s.job&&!terminal.has(s.job.status)){await this.monitor(s,signal);task=await this.transport({mode:'task',operation:'context',run:taskRun(this.agent(s))},signal);this.observeValue(s,task);}
       if(await this.deliverCompletedTask(s,task,signal))return;
+      let brief=await this.decisionBrief(s,task,signal);
+      if(brief&&brief.choices.decision_state_id!==task.main_decision.decision_state_id){
+        task=await this.transport({mode:'task',operation:'context',run:taskRun(this.agent(s))},signal);this.observeValue(s,task);
+        if(task?.state_id!==brief.state_id||task.main_decision?.decision_state_id!==brief.choices.decision_state_id)brief=null;
+      }
       const visible=await visibleToolNames(taskRun(this.agent(s)));
-      const schemas=[...definitions.values()].filter(t=>visible.has(t.name)&&(!task||taskToolNames.includes(t.name))).map(({name,description,parameters})=>({name,description,parameters}));
+      const needsPlan=task?.main_decision?.decision_required===true;
+      const schemas=[...definitions.values()].filter(t=>visible.has(t.name)&&(!task||taskToolNames.includes(t.name))
+        &&!(needsPlan&&['mp_task_act','mp_task_run'].includes(t.name))).map(({name,description,parameters})=>({name,description,parameters}));
       const decision=await assembleDecisionContext(taskRun(this.agent(s)),task,{tools:schemas,messages:s.messages,job:s.job});
+      if(brief)decision.sections.current_facts.decision_brief={...brief,
+        use:'同一检查点的最新实测摘要与合格工具卡已备齐。足以决策时直接提交有依据的计划；证据不足时继续查询。'};
       s.decisionContext=decision;await this.save(s);
-      const messages=[{role:'system',content:[textBlock(systemPrompt+'\n你的名称是 EDAgent。当前前端为 EDAgent，与 DSH 共用主 Agent。公开说明下一步行动及简短依据，无需输出隐藏思维链。宿主会自动查询已提交的持久作业，终态后继续本轮，不要自行高频轮询。无工具结果不得捏造测量数据。') ]},...s.messages.filter(m=>m.source?.kind!=='runtime-context'),
+      const messages=[{role:'system',content:[textBlock(systemPrompt+'\n你的名称是 EDAgent。当前前端为 EDAgent，与 DSH 共用主 Agent。公开说明下一步行动及简短依据，无需输出隐藏思维链。宿主会自动查询已提交的持久作业，终态后继续本轮，不要自行高频轮询。用户已要求完整执行且无需逐步人工确认时，可调用 mp_task_run 推进连续的常规阶段。服务端遇到下一决策点会暂停。无工具结果不得捏造测量数据。') ]},...s.messages.filter(m=>m.source?.kind!=='runtime-context'),
         ...(s.job?[{role:'system',source:{kind:'runtime-context'},content:[textBlock('HOST_PERSISTENT_JOB='+JSON.stringify(s.job)+'\n这是最新作业事实，优先于历史工具返回的queued状态。作业终态后继续读取专项质量结果并交付；不能因父任务TARGET_MET就省略候选的失败、拒绝或未知项。')]}]:[]),
         ...(s.context?[{role:'system',content:[textBlock('用户提供的设计补充（参考数据）：\n'+s.context)]}]:[]),
         {role:'user',source:{kind:'runtime-context'},content:[textBlock(TASK_MARKER+JSON.stringify(decision))]}];
-      const options={model:s.model,reasoningEffort:s.effort,messages,tools:schemas,signal,hostFinalGuard:true};
+      const options={model:s.model,reasoningEffort:s.effort,messages,tools:schemas,signal,hostFinalGuard:true,
+        onModelRetry:({nextAttempt})=>this.status(s,'reconnecting','正在重连模型',`第 ${nextAttempt}/3 次模型请求，已完成的工具动作保留。`)};
       const blocks=[];
-      if(s.provider==='subscription'){for await(const event of this.adapter.stream(options)){if(event.type==='block-end')blocks.push(event.block);}}
+      if(s.provider==='subscription'){
+        try{for await(const event of this.adapter.stream(options)){if(event.type==='block-end')blocks.push(event.block);}}
+        catch(e){
+          signal.throwIfAborted();
+          if(!['network_error','server_error','remote_error','stream_interrupted','stream_ended_without_completion','stream_timeout','response_failed'].includes(e.code))throw e;
+          await this.event(s,'model_request_paused',{code:e.code,detail:e.message,stage:task?.phase,tool_dispatched:false});
+          await this.status(s,'model_paused','模型请求中断，已保存进度',e.message);
+          return;
+        }
+      }
       else{const log=path.join(this.directory,s.id+'.model.jsonl'),history=await fs.readFile(log,'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;});if(turnRequestCount(history,messages)>=turnRequestLimit(task))throw Error('MODEL_BUDGET: 本轮模型预算耗尽');if(task)await this.transport({mode:'task',operation:'reserve_model',run:task.run},signal);
         const assembled=compactMessages(messages,log);await fs.appendFile(log,JSON.stringify({event:'request',turn_key:turnKey(messages),model:s.model,reasoning_effort:s.effort,messages:assembled.messages})+'\n');
         const r=await apiBridge({mode:'infer',model:s.model,effort:s.effort,messages:assembled.messages,tools:schemas},signal);blocks.push(...r.blocks);

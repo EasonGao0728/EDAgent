@@ -159,3 +159,59 @@ test('custom input check uses the uploaded manifest and lists missing macro mode
   await hub.addUpload(s.id,'ram.lib',Buffer.from('macro timing'));
   assert.deepEqual((await check()).problems,[]);
 });
+
+test('a failed inference preserves the checkpoint, exposes a paused session and resumes without dispatching partial calls',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-inference-resume-'));
+  let attempts=0,dispatches=0,started,unblock;
+  const during=new Promise(resolve=>{started=resolve;});
+  const release=new Promise(resolve=>{unblock=resolve;});
+  const controller=new AbortController();
+  const adapter={async *stream(options){
+    attempts++;
+    if(attempts===1){
+      started();await release;
+      assert.ok(!options.tools.some(t=>['mp_task_run','mp_task_act'].includes(t.name)));
+      yield {type:'block-end',block:{type:'tool-call',id:'partial',name:'mp_task_execute_plan',arguments:'{}'}};
+      throw Object.assign(Error('injected network failure'),{code:'network_error'});
+    }
+    yield {type:'block-end',block:{type:'text',text:'恢复模型连接'}};
+  }};
+  const checkpoint={state_id:'frozen',contract:{case_id:'tinyram'},plan:[],phase:'validate',main_decision:{decision_required:true}};
+  const hub=await new AgentHub({directory,adapter,transport:async()=>checkpoint}).init();
+  hub.execute=async()=>{dispatches++;throw Error('partial call dispatched');};
+  const {id}=await hub.create();
+  await hub.submit(id,{text:'继续已保存的任务'});await during;
+  assert.equal(hub.view(hub.session(id)).activeAgentSessions,1);
+  assert.equal(hub.session(id).job,null);
+  unblock();
+  for(let i=0;i<200&&hub.session(id).busy;i++)await delay(5);
+  assert.equal(hub.session(id).status.phase,'model_paused');
+  assert.equal(hub.view(hub.session(id)).activeAgentSessions,0);
+  assert.equal(dispatches,0);
+  await hub.writes.get(id);
+  const reopened=await new AgentHub({directory,adapter,transport:async()=>checkpoint}).init();
+  assert.equal(reopened.session(id).task.state_id,'frozen');
+  await reopened.loop(reopened.session(id),controller.signal);
+  assert.equal(attempts,2);assert.equal(dispatches,0);
+});
+
+test('decision checkpoint reads the summary and matching catalog once; a changed state cannot supply a plan',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-decision-brief-'));
+  const reads=[];let mismatch=false;
+  const hub=await new AgentHub({directory,transport:async q=>{
+    reads.push(q.operation);
+    if(q.operation==='decision_inspect')return {state_id:'state',decision_state_id:'after',evidence_id:'observation'};
+    assert.equal(q.operation,'decision_catalog');return {state_id:mismatch?'other':'state',decision_state_id:'after',tools:[]};
+  }}).init();
+  const {id}=await hub.create(),s=hub.session(id),signal=new AbortController().signal;
+  s.inputPackage='tinyram';
+  const t={contract:{goal:'full_backend'},state_id:'state',status:'running',main_decision:{decision_required:true,decision_state_id:'before'}};
+  const result=await hub.decisionBrief(s,t,signal);
+  assert.equal(result.facts.evidence_id,'observation');t.main_decision.decision_state_id='after';
+  assert.equal(await hub.decisionBrief(s,t,signal),result);assert.deepEqual(reads,['decision_inspect','decision_catalog']);
+  mismatch=true;t.main_decision.decision_state_id='different';
+  assert.equal(await hub.decisionBrief(s,t,signal),null);
+  assert.equal(s.events.filter(e=>e.type==='decision_brief').length,1);
+  assert.ok(canDeliverCompletedTask({status:'target_met',goal_certified:true},{status:'completed',request:{operation:'run'}}));
+  assert.ok(!canDeliverCompletedTask({status:'target_met',goal_certified:true},{status:'completed',request:{operation:'act',action:'routing'}}));
+});

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import time
 
 from .chatgpt_auth import ChatGPTAuth
@@ -84,9 +85,19 @@ def completed_response(response, timeout=180, max_bytes=4 * 1024 * 1024):
                 result = {**result, "output": output}
             return result
         if kind in {"response.failed", "response.incomplete", "error"}:
-            error = event.get("response", {}).get("error") or event.get("error") or event
+            terminal = event.get("response") or {}
+            error = terminal.get("error") or event.get("error") or event
             code = error.get("code") if isinstance(error, dict) else None
-            raise OpenAIError(remote_code(code) if isinstance(code, str) else kind.replace(".", "_"))
+            failure = OpenAIError(remote_code(code) if isinstance(code, str) else kind.replace(".", "_"))
+            details = {"event": kind}
+            request_id = getattr(response, "headers", {}).get("x-request-id", "")
+            if re.fullmatch(r"req[-_][a-zA-Z0-9-]{8,80}", request_id):
+                details["request_id"] = request_id
+            for field, value in (("code", code), ("reason", (terminal.get("incomplete_details") or {}).get("reason"))):
+                if isinstance(value, str) and re.fullmatch(r"[a-z][a-z_]{0,63}", value):
+                    details[field] = value
+            failure.stream_event = details
+            raise failure
         if kind == "response.output_item.done" and isinstance(event.get("item"), dict):
             done_items[event["output_index"]] = event["item"]
         elif kind == "response.content_part.done" and isinstance(event.get("part"), dict):

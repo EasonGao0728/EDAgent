@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import json
+import http.client
 import re
+import ssl
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -38,10 +41,31 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None  # Do not forward bearer credentials to a redirected host.
 
 
+class HandshakeConnection(http.client.HTTPSConnection):
+    def connect(self):
+        # connect() returns before http.client sends any origin HTTP headers or body.
+        # Retry only a closed handshake, using the same proxy, SNI and trust store.
+        for attempt in range(3):
+            try:
+                return super().connect()
+            except (ssl.SSLEOFError, ConnectionResetError):
+                if self.sock is not None:
+                    self.sock.close()
+                    self.sock = None
+                if attempt == 2:
+                    raise
+                time.sleep(0.5 * (attempt + 1))
+
+
+class HandshakeHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(HandshakeConnection, req, context=self._context)
+
+
 class OpenAIHTTP:
     def __init__(self, timeout=180):
         self.timeout = timeout
-        self.opener = urllib.request.build_opener(NoRedirect())
+        self.opener = urllib.request.build_opener(NoRedirect(), HandshakeHandler())
 
     def open(self, url, *, token=None, body=None, form=None, stream=False):
         parsed = urllib.parse.urlsplit(url)

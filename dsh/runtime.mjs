@@ -29,7 +29,7 @@ export function bridge(request, signal){
     child.on('close',()=>{
       clearTimeout(timer);signal?.removeEventListener('abort',cancel);
       try{const r=JSON.parse(out);if(!r.ok){
-        const e=Error(r.error);e.code=r.code;e.requiresLogin=r.requires_login===true;
+        const e=Error(r.error);e.code=r.code;e.httpStatus=r.http_status;e.requiresLogin=r.requires_login===true;
         if(r.code==='invalid_json_response'){
           try{
             const file=path.join(root,'runs','dsh-host-last-error.json');
@@ -38,7 +38,7 @@ export function bridge(request, signal){
         }
         throw e;
       }resolve(r.value);}
-      catch(e){const wrapped=Error(`host bridge: ${e.message}; ${err}`);wrapped.code=e.code;wrapped.requiresLogin=e.requiresLogin;wrapped.retryableCatalogRead=e.retryableCatalogRead===true;reject(wrapped);}
+      catch(e){const wrapped=Error(`host bridge: ${e.message}; ${err}`);wrapped.code=e.code;wrapped.httpStatus=e.httpStatus;wrapped.requiresLogin=e.requiresLogin;wrapped.retryableCatalogRead=e.retryableCatalogRead===true;reject(wrapped);}
     });
     child.stdin.end(JSON.stringify(request));
     if(signal?.aborted)cancel();
