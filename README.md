@@ -1,55 +1,63 @@
 # EDAgent
 
-[中文使用说明](docs/README.zh-CN.md) · [Case coverage](docs/CASE_MATRIX.md) · [Development roadmap](ROADMAP.md)
+[Chinese guide](docs/README.zh-CN.md) · [Deployment guide](docs/DEPLOYMENT.md) · [Case coverage](docs/CASE_MATRIX.md) · [Roadmap](#development-roadmap)
 
-EDAgent is a research workbench for running digital chip physical-design experiments. Its local agent selects tools and interprets evidence. A Linux worker executes iEDA and preserves checkpoints. A completed design can deliver a routed DEF, an abstract GDS, a layout preview and a report of rule violations.
+EDAgent is a chat workbench for digital chip physical design. Give the main agent a technology-mapped netlist, its physical libraries and timing constraints. The agent inspects the design, selects tools and follows the run through placement and routing. iEDA runs on a Linux worker. The workbench brings back the routed DEF, layout preview, abstract GDS and a report of design-rule violations.
 
-**Current coverage** · The development workbench lists 50 designs. Five have a registered full-backend profile, two have placement profiles, and 43 are being brought up. Seven of those 43 use ICS55 and await authorized PDK access. A working profile, a reproduced run and a clean physical design are three different milestones. See [case coverage](docs/CASE_MATRIX.md).
+## Run a real design in the workbench
 
-## Try it in a minute
+The walkthrough uses **SWERV on Nangate45** (`swerv_nangate45`), a registered design with 6,777 standard cells and three SRAM hard macros. It exercises macro placement, standard-cell placement, clock-tree synthesis and routing. You need a Windows workstation for the UI and SSH access to a worker provisioned with the matching iEDA build, case bundle and libraries.
 
-From a source checkout, with Python 3.11 or later:
+### 1. Install and open the workbench
 
-```sh
-python examples/placement_metrics.py
-```
-
-The example reads a small bundled macro placement with eight weighted nets and computes its half-perimeter wirelength. The expected result is **2145 model units**. It requires no account, server or EDA installation. The production flow uses mapped Verilog, LEF, Liberty and SDC and computes physical measurements on the server.
-
-## How a design moves through the system
-
-```text
-Workbench → design contract and input checks → tool selection → SSH job
-       ↑                                                        ↓
- report, preview and hashes ← acceptance checks ← iEDA checkpoints
-```
-
-The agent can inspect a checkpoint, compare measurements and try a scoped adjustment on a branch. The parent result remains available for comparison. DRC counts accompany the result even when the flow itself completed.
-
-| Directory | Responsibility |
-| --- | --- |
-| ic-workbench/ | Local chat UI, case selector, file intake, tool library and artifact delivery |
-| dsh/ | Agent integration, model adapters, context management and tool dispatch |
-| macro_agent/ | Task contracts, remote execution, independent checks and quality feedback |
-| tools/ | Runtime preparation, evidence inspection, research experiments and acceptance utilities |
-| environments/ | Build sources and configuration for native tools |
-| tests/ | Regression tests for placement, metrics, input binding and execution |
-
-## Run the workbench
-
-On Windows use Python 3.11+, Node.js 24 and npm. From the checkout:
+Install Git, Python 3.11 or newer with the Windows Python launcher, Node.js 24 with npm, and the Windows OpenSSH client. Run these commands in PowerShell. Keep the terminal running while using the workbench.
 
 ```powershell
-py -3.11 -m venv .venv-agent
+git clone https://github.com/EasonGao0728/EDAgent.git
+cd EDAgent
+py -3 -m venv .venv-agent
 .\.venv-agent\Scripts\python.exe -m pip install -e ".[chatgpt]"
-npm ci --ignore-scripts
-.\tools\start-silicon-workbench.ps1 -Open
+npm.cmd ci --ignore-scripts
+npm.cmd start
 ```
 
-The workbench listens on [localhost](http://127.0.0.1:4173/). **选择现有案例** opens the server catalog. **自定义输入案例** lists the mapped netlist, technology and library files, timing constraints and manifests expected by the importer. The model connection dialog supports a user-supplied endpoint and key.
+Open [the local workbench](http://127.0.0.1:4173/). In the model connection dialog, enter your provider's base URL, API key, model ID and supported protocol. Use a model that supports tool calls. Keep the key in the connection dialog and out of task messages. The current UI is in Chinese; the control names below are English translations.
 
-Physical execution requires your own authorized Linux worker, pinned native binaries and compatible design libraries. The lab deployment is installation-specific; a fresh clone alone cannot reproduce all physical runs. See [deployment and third-party inputs](docs/DEPLOYMENT.md).
+### 2. Connect the Linux worker
 
-## Contribute
+If your lab already operates a compatible worker, obtain its SSH hostname and provisioned account from the operator. Configure the `eda-worker` SSH alias, verify key-based login, then set the worker account UID and enable the matching `environments/remote-server.json` profile on both hosts. The public profile expects `/srv/edagent/main-agent-remote-v1` as its remote project root. A fresh clone starts with remote execution disabled.
 
-A useful bug report identifies the case, PDK revision, failed stage and observed versus expected result. Share a minimal reproducible input you may redistribute. For a new full-flow profile, include the frozen inputs and build identities, route-completion checks, DRC report, DEF readback and GDS evidence. [Roadmap](ROADMAP.md)
+For a new worker, the operator must also provision the pinned native tools, case files and process libraries. The [deployment guide](docs/DEPLOYMENT.md) lists the expected paths, required inputs and connection checks. Once connected, the workbench should show the worker **online** and your chosen case **available**.
+
+### 3. Submit the design and inspect the result
+
+1. Start a new conversation. Open **Select an existing case**, filter by **Full back end**, and select `swerv_nangate45`. Selection binds the server's design package to the conversation.
+2. Submit a task such as **“Run the registered SWERV full back end from its mapped netlist. Preserve all three SRAM macros. Deliver the routed DEF, layout preview and DRC report.”**
+3. Follow the stage evidence through import, floorplanning, macro and standard-cell placement, clock-tree synthesis, optimization, routing and post-route checks. Use the existing task to inspect progress if a long stage is still running.
+4. Open the report and layout preview. Check the hard-macro count, routed DEF readback, abstract GDS verification and remaining DRC violations. A completed flow can still have physical violations. Timing reports without extracted parasitics are diagnostic.
+
+For your own files, **Custom case input** shows the required uploads. Prepare the mapped Verilog, technology LEF, standard-cell and macro LEFs, matching Liberty files, SDC and the design metadata required by the selected profile. Full physical execution currently requires a registered input package. The [case matrix](docs/CASE_MATRIX.md) tracks the 50 development designs individually. Five have full-backend workbench profiles.
+
+## Agent architecture
+
+![EDAgent target architecture with a main placement agent, a dispatcher, a reusable tool library, and an algorithm agent that builds and tests tools](docs/images/agent-architecture.png)
+
+[Open the original architecture diagram at full resolution](docs/images/agent-architecture.png)
+
+The main placement agent owns the design state and the next decision. Its dispatcher searches the tool library for a suitable operation; the tool user executes it and returns measurements. Context management and retrieval keep the current constraints, relevant tool descriptions and previous results available across stages. When a placement or routing choice needs review, a checkpoint provides a common starting point for comparing candidates.
+
+The figure also shows the target **Algorithm Agent**. When the library lacks a suitable tool, the proposed interface hands this agent a scoped problem, inputs and acceptance criteria. It builds and tests a candidate tool for later reuse. This handoff and tool evolution belong to the later research milestones.
+
+## Development roadmap
+
+| Stage | Planned work | How we will evaluate it |
+| --- | --- | --- |
+| 1. Reliable end-to-end tool use · active | Make worker setup reproducible, qualify more full-backend profiles, and improve input perception, checkpoint recovery and quality feedback. Package the Windows workbench once a new installation can complete a redistributable case. | On a fresh deployment, submit a mapped netlist from chat and inspect the routed DEF, preview, GDS and quality report. |
+| 2. Tool creation from observed gaps | Give the Algorithm Agent a specific operation the dispatcher could not satisfy. Have it build and test a tool against a fixed baseline. | Compare physical metrics and cost on the same inputs and budget, then reuse the accepted tool on another task. |
+| 3. Tool evolution and agent self-improvement | Upgrade a tool for new designs and evaluate changes to how the Algorithm Agent proposes and tests tools. | Check held-out designs and previous successes, track regressions and retain rollback to earlier versions. |
+
+The [detailed roadmap](ROADMAP.md) and [qualification records](docs/QUALIFICATION.md) distinguish planned features from measured results.
+
+## Contributing
+
+For a flow or tool issue, include the case ID, process and library revision, failed stage and relevant log excerpt. A new full-flow profile should include input and build hashes, routing evidence, DRC results, DEF readback and GDS verification. Share design files only when you have redistribution rights. EDAgent's original code is covered by the [MIT license](LICENSE); third-party tools and libraries retain their own terms.

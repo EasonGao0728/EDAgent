@@ -1,14 +1,49 @@
-# Deployment and data
+# Deploying EDAgent
 
-The open source checkout contains application and test source. The browser workbench uses pinned DSH packages from npm. For integration with an installed DSH desktop, tools/prepare_dsh_runtime.py can read its app.asar. The server uses an SSH alias, an account-owned workspace, a pinned iEDA binary, an independently checked exporter and an isolated native worker. The research deployment admits one job at a time, uses at most four CPU threads and an 8 GiB per-process address-space limit. Each installation must review the host, account identity, input roots and executable pins before enabling remote execution.
+## Windows workstation
 
-- [iEDA](https://github.com/OSCC-Project/iEDA) supplies native physical design tools. The project's tested binary is a specific snapshot; source compatibility with upstream HEAD is unverified.
-- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) supplies the agent framework. Supply the runtime that corresponds to the API used by this checkout (development environment: 0.2.0-rc.2).
-- [OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) provides public research library inputs for selected technology profiles. Keep upstream notices and verify the pinned versions.
-- The shared iBench benchmark netlists, lab PDKs, native executables and signoff collateral require their own access and applicable permissions. The catalog describes them; the application license covers original project code only.
+Follow the [PowerShell install commands](../README.md#1-install-and-open-the-workbench) from the repository root. The model adapter looks for Python at `.venv-agent/Scripts/python.exe`. The standalone workbench loads its pinned DeepSeek Harness packages from npm. A separate DSH desktop installation is optional. On subsequent launches, run `npm.cmd start` from the same checkout and open `http://127.0.0.1:4173/`.
 
-For an actual design, use a technology-mapped Verilog netlist, matching technology and cell LEFs, corner-matched Liberty, SDC, and matching macro LEF/Liberty when the design contains macros. The lab's registered-input procedure also requires a design manifest and design metadata. An input check does not grant full-flow qualification. Faults in timing coverage, DRC or macro geometry must stay visible.
+Check the UI process and the worker separately from a second PowerShell window:
 
-Historical reproduction tools under tools/ may depend on artifacts from a particular experiment. The portable offline example and CI exercise the parts reproducible from a clean clone.
+```powershell
+Invoke-RestMethod http://127.0.0.1:4173/api/health
+Invoke-RestMethod http://127.0.0.1:4173/api/remote-status
+```
 
-For a new deployment, set `ssh_host` to your SSH alias and set `server_uid` to the output of `id -u` for the approved, non-root Linux account. Configure `server_root` and its benchmark/runtime paths for that installation. Apply the matching profile on both hosts and enable it only after the worker binaries match the expected hashes. The public template starts disabled with no authorized UID.
+The first response should contain `ok: true` and `source: shared-dsh-main-agent`. The second reports `online`, available case IDs and current jobs. Before worker configuration, `online: false` is expected even when the UI opens normally.
+
+## Connecting to an existing worker
+
+1. Ask the operator which Linux host and non-root account already have access to the deployment and your case. In `%USERPROFILE%\.ssh\config`, map the supported alias to that machine, replacing the two sample values below.
+
+   ```sshconfig
+   Host eda-worker
+       HostName worker.example.org
+       User your-linux-account
+   ```
+
+2. Verify the host fingerprint with the operator on first connection. Run `ssh eda-worker id -u`, then `ssh -o BatchMode=yes eda-worker id -u`. Both should return the same nonzero UID. The second command checks that the workbench can connect without an interactive password prompt.
+3. Edit [environments/remote-server.json](../environments/remote-server.json) on your workstation. Use the literal alias `eda-worker`, the project root `/srv/edagent/main-agent-remote-v1`, the numeric Linux UID for `server_uid`, and `enabled: true`. Keep `local_fallback: false`. The operator must configure the same authorized UID and enable the worker profile. The public transport validates the alias and root.
+4. Recheck `/api/remote-status` after the status cache refreshes (about 20 seconds). Confirm that the desired full-backend case is included in `cases`. Then select it in the workbench and submit the task.
+
+## Provisioning a new Linux worker
+
+The public checkout contains the controller, adapters, validation code and case catalog. A new worker also needs these operator-provided components:
+
+| Component | Expected location or check |
+| --- | --- |
+| Worker source and jobs | Install this checkout at `/srv/edagent/main-agent-remote-v1`. Give the authorized account space to create its run directories and preserve checkpoints. |
+| Execution environment | Provide SSH, Python and the unprivileged Linux `bwrap` runtime used by [the native adapter](../macro_agent/remote_native.py). Long jobs use tmux. The research profile admits one job at a time with four CPU threads and an 8 GiB per-process address-space limit. |
+| Native binaries | The worker checks the primary iEDA binary in `/srv/edagent/portable-runtime-v1` against its pinned digest. Full-flow profiles also check their router, CTS and native GDS exporter components under `environments/`. See [the Nangate45 backend](../macro_agent/swerv_backend.py) for the SWERV paths and checks. |
+| Registered design | For the walkthrough, provision `cases/ibench/swerv_nangate45/` in the worker checkout with its manifest, netlist, SDC, configuration, matching technology/standard-cell/macro LEFs, Liberty files, macro-placement dependency and source provenance. The preflight checks the registered inputs. |
+| Additional benchmark catalog | The input-audit probe uses `/srv/benchmarks/iBench/benchmarks`. The [case matrix](CASE_MATRIX.md) records the qualification level of individual designs. |
+
+The Python and npm install commands install the desktop software. Provisioning a fresh worker still requires the compatible binaries and original design packages. The public source distribution includes neither the lab's registered SWERV bundle nor a ready-made worker image. Operators with their own build or netlist must qualify that combination before offering it as a full-backend profile. Pin source revisions and retain matching input and output digests.
+
+## Upstream resources and data rights
+
+- [iEDA](https://github.com/OSCC-Project/iEDA) supplies the native physical-design tools. The tested research deployment uses a specific build.
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) supplies the agent runtime. The desktop npm versions are pinned in the lockfile.
+- [OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts) provides selected public research libraries. [Library receipts](public-library-receipts.json) list exact revisions and hashes.
+- Benchmark netlists, macro models, PDKs and executables have their own access and redistribution terms. The MIT license applies to original EDAgent code.
