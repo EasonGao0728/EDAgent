@@ -91,7 +91,8 @@ function paintHealth(){
   if(!el)return;
   el.dataset.state=remote?.online?'online':remote?'unknown':'checking';
   const when=remote?.checkedAt?new Date(remote.checkedAt).toLocaleTimeString('zh-CN',{hour12:false}):'';
-  el.textContent=!remote?'服务器检测中':remote.online?'服务器在线 · '+remote.jobs+' 个活动作业':'服务器状态未知';
+  const qualifying=remote?.qualification_jobs||[];
+  el.textContent=!remote?'服务器检测中':remote.online?'服务器在线 · '+remote.jobs+' 个 Agent 作业'+(qualifying.length?' · '+qualifying.map(j=>j.case_id+' 资格验证 / '+j.stage).join('、'):''):'服务器状态未知';
   el.title=when?'最近检查 '+when+'，每 30 秒更新。作业数来自当前项目调度记录。':'正在检查远程 iEDA';
 }
 async function refreshRemote(){

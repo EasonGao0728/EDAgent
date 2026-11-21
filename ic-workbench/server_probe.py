@@ -1,6 +1,7 @@
 """Read-only workbench probe. The host supplies a trusted catalog and optional selection."""
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -121,5 +122,23 @@ else:
             certificates[case_id]=certificate
         except (OSError,ValueError,KeyError):
             continue
+    from macro_agent.remote_native import identity
+    qualification_jobs=[]
+    for handle in Path("runs").glob("bringup-*/attempt-*/handles/*.json"):
+        try:
+            worker=json.loads(handle.read_bytes())
+            if Path("/proc",str(worker["pid"])).stat().st_uid!=os.getuid():
+                continue
+            if identity(worker["pid"])!=worker["start_ticks"]:
+                continue
+            work=handle.parent.parent
+            manifest=json.loads((work/"manifest.json").read_bytes())
+            source=(work/"stage.tcl").read_text()
+            stage=re.search(r"SWERV_STAGE_OK (\w+)",source)
+            qualification_jobs.append({"case_id":manifest["case_id"],"stage":stage[1] if stage else "native",
+                                       "kind":"qualification"})
+        except (OSError,ValueError,KeyError):
+            continue
     print(json.dumps(dict(online=runtime_status()["available"], cases=packages, jobs=len(active_jobs()),
-                         readiness=readiness,runnable_cases=runnable,qualifications=certificates)))
+                         readiness=readiness,runnable_cases=runnable,qualifications=certificates,
+                         qualification_jobs=qualification_jobs)))
