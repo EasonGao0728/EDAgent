@@ -97,6 +97,22 @@ test('server package selection validates origin and pins the start case',async()
   await assert.rejects(hub.execute(s,{name:'mp_task_start',id:'case-test',arguments:JSON.stringify({case_id:'aes_legacy',goal:'full_backend'})},new AbortController().signal),/匹配所选服务器输入包/);
 });
 
+test('unqualified or offline server cases cannot enter the agent loop',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-case-admission-'));
+  let calls=0;
+  const hub=await new AgentHub({directory,caseStatus:async()=>({online:true,runnable_cases:[]}),
+    adapter:{async *stream(){calls++;yield {type:'block-end',block:{type:'text',text:'done'}};}}}).init();
+  const {id}=await hub.create();
+  await assert.rejects(()=>hub.submit(id,{text:'执行完整后端',serverCase:'swerv_nangate45'}),/完整后端验收/);
+  assert.equal(calls,0);assert.equal(hub.session(id).messages.length,0);assert.equal(hub.active.size,0);
+  hub.caseStatus=async()=>({online:true,runnable_cases:['bp_quad']});
+  await assert.rejects(()=>hub.submit(id,{text:'执行完整后端',serverCase:'bp_quad'}),/完整后端验收/);
+  assert.equal(calls,0);
+  hub.caseStatus=async()=>({online:false,runnable_cases:['swerv_nangate45']});
+  await assert.rejects(()=>hub.submit(id,{text:'执行完整后端',serverCase:'swerv_nangate45'}),/完整后端验收/);
+  assert.equal(calls,0);
+});
+
 test('custom input check uses the uploaded manifest and lists missing macro models',async()=>{
   const {inspectUploadPackage}=await import('../upload-check.mjs');
   const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-input-check-'));

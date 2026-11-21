@@ -1,4 +1,4 @@
-import {packages,auditCase} from './remote-status.mjs';
+import {packages,auditCase,remoteStatus} from './remote-status.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
@@ -70,7 +70,7 @@ export function canDeliverCompletedTask(task,job){
 }
 
 export class AgentHub{
-  constructor({directory=sessionRoot,transport=bridge,adapter=subscription,pollMs=15000}={}){this.directory=directory;this.transport=transport;this.adapter=adapter;this.pollMs=pollMs;this.sessions=new Map();this.active=new Map();this.writes=new Map();}
+  constructor({directory=sessionRoot,transport=bridge,adapter=subscription,pollMs=15000,caseStatus=remoteStatus}={}){this.directory=directory;this.transport=transport;this.adapter=adapter;this.pollMs=pollMs;this.caseStatus=caseStatus;this.sessions=new Map();this.active=new Map();this.writes=new Map();}
   async init(){await fs.mkdir(this.directory,{recursive:true});for(const name of await fs.readdir(this.directory)){
     if(!/^silicon-[a-f0-9-]+\.json$/.test(name))continue;
     const s=JSON.parse(await fs.readFile(path.join(this.directory,name),'utf8'));
@@ -89,6 +89,13 @@ export class AgentHub{
     const hash=createHash('sha256').update(data).digest('hex'),dir=path.join(this.directory,id,'uploads',hash);await fs.mkdir(dir,{recursive:true});const hostPath=path.join(dir,name);await fs.writeFile(hostPath,data);
     const ref={name,bytes:data.length,attachmentId:'sha256:'+hash,hostPath};s.uploads=s.uploads.filter(f=>f.name!==name);s.uploads.push(ref);await this.save(s);return {name,bytes:data.length,attachmentId:ref.attachmentId};}
   async submit(id,body){const s=this.session(id);if(s.busy)throw Error('本会话仍在运行');if(this.active.size)throw Error('另一个会话正在使用主 Agent，请等待或先停止回复');const turn=validateTurn(body);
+    if(turn.serverCase){
+      const available=await this.caseStatus({fresh:true});
+      const entry=packages.find(p=>p.id===turn.serverCase);
+      if(entry?.goal!=='full_backend'||!available.online||!available.runnable_cases?.includes(turn.serverCase)){
+        throw Error('该案例尚未通过当前服务器的完整后端验收，请选择“全流程已验证”的案例。');
+      }
+    }
     if(turn.serverCase && s.task?.contract?.case_id && s.task.contract.case_id!==turn.serverCase)throw Error('当前会话已绑定其他设计，请新建会话');
     if(turn.serverCase)turn.text+='\n\n服务器输入包：'+turn.serverCase;
     const files=turn.attachments.map(id=>{const f=s.uploads.find(f=>f.attachmentId===id);if(!f)throw Error('附件不属于此会话');return {type:'file',attachment:f};});

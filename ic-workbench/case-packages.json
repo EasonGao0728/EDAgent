@@ -266,7 +266,7 @@
     "top": "bp_fe_top",
     "cells": 24562,
     "macros": 11,
-    "goal": "input_audit",
+    "goal": "full_backend",
     "files": [],
     "assets": {
       "design": {
@@ -1190,7 +1190,7 @@
     "top": "s35932",
     "cells": 5247,
     "macros": 0,
-    "goal": "input_audit",
+    "goal": "full_backend",
     "files": [],
     "assets": {
       "design": {

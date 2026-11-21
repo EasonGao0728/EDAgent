@@ -35,7 +35,7 @@ def input_profile(state):
         'unknowns':['functional classification is not verified from gate topology','pin-direction fanout','timing closure']}
     try:
         buses=None
-        if m['case_id']=='swerv_nangate45':
+        if 'expected_macro_masters' in m:
             from .swerv_backend import cells_and_buses
             _,buses=cells_and_buses(root,m)
         n=parse(root/m['netlist'],buses)

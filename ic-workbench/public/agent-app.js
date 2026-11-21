@@ -111,17 +111,21 @@ function drawCases(){
     const terms=[p.id,p.pdk,p.size,p.category,p.macros?'含宏':'无宏',goalLabel(p)].join(' ').toLowerCase();
     return (!size||p.size===size)&&p.macros>=min&&(!goal||p.goal===goal)&&words.every(k=>terms.includes(k));
   }).sort((a,b)=>b.macros-a.macros||a.id.localeCompare(b.id));
-  $('#case-count').textContent='匹配 '+rows.length+' / '+packageList.length+' 个案例 · 按宏数量排序';
+  const runnable=rows.filter(p=>p.goal==='full_backend'&&remote?.online&&remote.runnable_cases?.includes(p.id)).length;
+  $('#case-count').textContent='当前可运行 '+runnable+' 个 · 匹配 '+rows.length+' / '+packageList.length+' 个案例';
   $('#case-rows').innerHTML=rows.map(p=>{
-    const verified=remote?.online&&remote.cases.includes(p.id);
+    const verified=p.goal==='full_backend'&&remote?.online&&remote.runnable_cases?.includes(p.id);
     const bound=s.task?.contract?.case_id, blocked=bound&&bound!==p.id;
     const progress=remote?.readiness?.[p.id];
-    const detail=[p.size,p.pdk,p.category,goalLabel(p),progress].filter(Boolean).join(' · ');
-    return `<div class="case-row"><div><strong>${esc(p.id)}</strong><small>${esc(detail)}</small><small>${p.cells.toLocaleString()} 个标准单元 · <b>${p.macros} 个宏</b></small></div><button class="btn subtle" aria-label="${esc('选用 '+p.id)}" data-use-case="${esc(p.id)}" ${verified&&!blocked?'':'disabled'}>${blocked?'需新会话':verified?'选用':remote?.online?'文件待核验':'待连接'}</button></div>`;
+    const qualification=remote?.qualifications?.[p.id];
+    const state=verified?'全流程已验证':progress||'全流程待验收';
+    const adaptation=qualification?.floorplan_adaptation?.scale;
+    const detail=[p.size,p.pdk,p.category,state,qualification?.drc_count!=null?'DRC '+qualification.drc_count+' 项':null,adaptation?'核心边长 '+adaptation+'× 适配版':null].filter(Boolean).join(' · ');
+    return `<div class="case-row"><div><strong>${esc(p.id)}</strong><small>${esc(detail)}</small><small>${p.cells.toLocaleString()} 个标准单元 · <b>${p.macros} 个宏</b></small></div><button class="btn subtle" aria-label="${esc('选用 '+p.id)}" data-use-case="${esc(p.id)}" ${verified&&!blocked?'':'disabled'}>${blocked?'需新会话':verified?'选用':remote?.online?'待验收':'待连接'}</button></div>`;
   }).join('')||'<p class="panel-note">没有匹配的案例。请调整筛选条件。</p>';
 }
 function inputs(){
-  modal(`<div class="input-picker"><div class="case-filters"><input id="case-query" type="search" aria-label="搜索案例" placeholder="搜索名称、工艺或类型"><select id="case-size" aria-label="规模"><option value="">全部规模</option>${[...new Set(packageList.map(p=>p.size))].map(v=>`<option>${esc(v)}</option>`).join('')}</select><select id="case-macros" aria-label="宏数量"><option value="0">全部宏数量</option><option value="1">含宏（≥1）</option><option value="10">≥10 个宏</option><option value="100">≥100 个宏</option></select><select id="case-goal" aria-label="可执行任务"><option value="">全部任务</option><option value="full_backend">完整后端</option><option value="placement_def">布局至 DEF</option><option value="input_audit">输入核验</option></select></div><p id="case-count" role="status"></p><div id="case-rows"></div><p>输入核验会读取服务器上的设计清单、门级网表和 SDC，核对文件版本并报告设计特征。要生成版图，请按可执行任务筛选。</p></div>`,'选择现有案例');
+  modal(`<div class="input-picker"><div class="case-filters"><input id="case-query" type="search" aria-label="搜索案例" placeholder="搜索名称、工艺或类型"><select id="case-size" aria-label="规模"><option value="">全部规模</option>${[...new Set(packageList.map(p=>p.size))].map(v=>`<option>${esc(v)}</option>`).join('')}</select><select id="case-macros" aria-label="宏数量"><option value="0">全部宏数量</option><option value="1">含宏（≥1）</option><option value="10">≥10 个宏</option><option value="100">≥100 个宏</option></select><select id="case-goal" aria-label="可执行任务"><option value="full_backend">已登记完整后端</option><option value="">全部案例与验收状态</option></select></div><p id="case-count" role="status"></p><div id="case-rows"></div><p>可选案例均有服务器完整后端验收凭据，启动前再次检查文件。原生 DRC 与时序结果见报告。其余案例保留展示，完成全流程验收后开放选择。</p></div>`,'选择现有案例');
   for(const id of ['case-query','case-size','case-macros','case-goal'])$('#'+id).oninput=drawCases;
   $('#case-rows').onclick=e=>{
     const b=e.target.closest('[data-use-case]');if(!b||b.disabled)return;

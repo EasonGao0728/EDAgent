@@ -77,6 +77,19 @@ def cards():
                 'experimental_admission':'registered_swerv_first_run_v1',
                 'reason':'User-requested bounded qualification run; every native stage still requires independent checks'})
     except (ValueError,OSError,RuntimeError,KeyError):pass
+    from .catalog_backend import CASES as catalog_cases,require_qualification as require_catalog
+    for case_id in catalog_cases:
+        try:
+            evidence=require_catalog(case_id)
+        except (OSError,ValueError,KeyError):
+            continue
+        for stage in ("macro_placement","standard_cell_placement"):
+            result.append({"tool_id":"ieda_"+stage+"_"+case_id,"backend":"iEDA","phase1_allowed":True,
+                "version":rt.IMAGE,"source":"https://github.com/OSCC-Project/iEDA",
+                "license":"Mulan PSL v2","stage":stage,"formats":["catalog_nangate45:"+case_id],
+                "constraints":["fixed_instances","die_bounds","nonoverlap","row_site_alignment"],
+                "installed":True,"verified":True,"evidence":evidence["evidence"],
+                "cpu_threads":4,"memory_gb":8,"timeout_seconds":600})
     return result
 
 

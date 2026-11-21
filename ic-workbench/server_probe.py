@@ -111,4 +111,15 @@ else:
                     readiness[case_id]="原生导入内存不足 · 单进程地址空间上限 8 GiB"
             except (OSError, ValueError, KeyError):
                 pass
-    print(json.dumps(dict(online=runtime_status()["available"], cases=packages, jobs=len(active_jobs()), readiness=readiness)))
+    from macro_agent.case_readiness import ready
+    runnable=[]
+    certificates={}
+    for case_id in REGISTERED_CASES:
+        try:
+            certificate=ready(case_id)
+            runnable.append(case_id)
+            certificates[case_id]=certificate
+        except (OSError,ValueError,KeyError):
+            continue
+    print(json.dumps(dict(online=runtime_status()["available"], cases=packages, jobs=len(active_jobs()),
+                         readiness=readiness,runnable_cases=runnable,qualifications=certificates)))

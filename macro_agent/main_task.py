@@ -211,16 +211,21 @@ def view(state, folder):
             'goal_scope':'registered case only; macro and aggregate phase-one gates require separate evidence',
             'macro_placement_verified':bool(state['results'].get('macro_placement',{}).get('independent_macro_check',{}).get('passed')),
             'unknown_metrics':{'timing':None,'power':None,'routed_congestion':None},
-            'limitations':(['Three public research SRAM hard macros; first fullflow qualification experiment'] if state['contract']['case_id']=='swerv_nangate45' else ['Two-real-SRAM registered placement fixture; no PDN or routing acceptance'] if state['contract']['case_id']=='sky130_sram_pair' else ['This registered standard-cell case has zero hard macros'])+['No timing or manufacturing signoff','Supported case package only, not arbitrary netlists']+
+            'limitations':([str(len(state['contract']['case_manifest']['expected_macro_masters']))+' research hard macros in the qualified catalog profile'] if state['contract']['case_id'] in ('bp_fe','bp_be','bp_multi') else ['Three public research SRAM hard macros; first fullflow qualification experiment'] if state['contract']['case_id']=='swerv_nangate45' else ['Two-real-SRAM registered placement fixture; no PDN or routing acceptance'] if state['contract']['case_id']=='sky130_sram_pair' else ['This registered standard-cell case has zero hard macros'])+['No timing or manufacturing signoff','Supported case package only, not arbitrary netlists']+
                 (['Registered full backend workflow; abstract GDS only; RCX, routed timing, power and IR not qualified'] if state['contract'].get('goal')=='full_backend' else ['Experimental routed DEF subset; native GDS, fanout/DRV/hold parity and overall phase-one acceptance pending'] if state['contract'].get('goal')=='routed_def' else ['No routing acceptance'])}
 
 
 def start(folder,case_id,attachment_inputs=None,goal='placement_def'):
     if goal not in ('placement_def','routed_def','full_backend'):raise ValueError('unsupported_goal')
     from .aes_backend import CASES as AES_CASES,require_qualification
+    from .catalog_backend import CASES as CATALOG_CASES
     if case_id in AES_CASES:
         if goal!='full_backend':raise ValueError('Registered AES requires full_backend goal')
         require_qualification(case_id)
+    elif case_id in CATALOG_CASES:
+        if goal!='full_backend':raise ValueError('Qualified catalog requires full_backend')
+        from .catalog_backend import require_qualification as require_catalog
+        require_catalog(case_id)
     elif case_id=='swerv_nangate45':
         if goal!='full_backend':raise ValueError('Registered SWERV requires full_backend goal')
         from .swerv_backend import preflight
@@ -268,7 +273,7 @@ def start(folder,case_id,attachment_inputs=None,goal='placement_def'):
             contract.update(evaluation_stage='registered_full_backend_workflow',experimental=False,
                 required_backend_gates=contract['required_backend_gates']+['fanout_semantic_identity','drv_hold_semantic_identity_and_native_reports','native_abstract_gds_readback'],
                 qualification_scope=case_manifest['full_backend_policy'])
-        if case_id in AES_CASES or case_id=='swerv_nangate45':
+        if case_id in AES_CASES or case_id=='swerv_nangate45' or case_id in CATALOG_CASES:
             contract['hard_constraints'][0]='preserve original logical instances and electrical endpoints modulo approved non-inverting buffers'
             contract.update(approved_logical_transformations={
                 'fanout_cts_drv_hold':{'buffer_masters':['sky130_fd_sc_hd__buf_1','sky130_fd_sc_hd__buf_8'],
@@ -277,11 +282,14 @@ def start(folder,case_id,attachment_inputs=None,goal='placement_def'):
                 acceptance_mode='flow_reproduction_separate_from_physical_quality',
                 required_backend_gates=['independent_flat_alias_endpoint_import','placement_validation','approved_buffer_contraction',
                     'native_routing_complete_all_nets','supported_drc_executed_and_reported','no_drc_counter_discrepancy','routed_def_roundtrip','native_abstract_gds_readback'])
-        if case_id=='swerv_nangate45':
+        if case_id=='swerv_nangate45' or case_id in CATALOG_CASES:
             from .swerv_backend import BUFFERS
             contract.update(experimental=True,qualification_status='first_case_run_pending',
                 approved_logical_transformations={'fanout_cts_drv_hold':{'buffer_masters':list(BUFFERS),'input_pin':'A','output_pin':'Z','proof':'preserve original endpoint partitions after buffer contraction'},'other_stages':'no logical reconnection'})
-            contract['required_backend_gates'].append('native_macro_geometry_and_identity')
+            if case_manifest.get('expected_macro_masters'):
+                contract['required_backend_gates'].append('native_macro_geometry_and_identity')
+            if case_id in CATALOG_CASES:
+                contract.update(experimental=False,qualification_status='native_fullflow_qualified')
     if attachment_import:
         contract.update(input_source='conversation_attachments', input_root=attachment_import['input_root'], attachment_import=attachment_import)
     state={'contract':contract,'input_refs':refs,'revision':0,'created_at':time.time(),'status':'running',

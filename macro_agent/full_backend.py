@@ -39,6 +39,9 @@ def setup(work,base):
     base.setup(work);configure_to(Path(work))
 
 def for_case(case_id,reference_root=None):
+    from .catalog_backend import CASES as catalog_cases,for_case as catalog_case
+    if case_id in catalog_cases:
+        return catalog_case(case_id,reference_root)
     if case_id=='swerv_nangate45':
         from .swerv_backend import for_case as swerv_case
         return swerv_case(case_id,reference_root)

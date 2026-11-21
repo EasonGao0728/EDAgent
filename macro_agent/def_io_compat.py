@@ -11,6 +11,7 @@ from .def_validation import read_def,section
 
 def convert(text,explicit=False):
     changed=0
+    replacements={}
     rows=section(text,'PINS')
     for row in rows:
         ports=re.findall(r'\+\s+PORT\b',row)
@@ -27,10 +28,22 @@ def convert(text,explicit=False):
             new=re.sub(r'\+\s+PORT\s*','',row,count=1)
         else:continue
         # Exact complete record replacement; never touch NETS or cell ports.
-        pattern=r'(^\s*-\s*)'+re.escape(row)+r'(\s*;)'
-        text,n=re.subn(pattern,lambda m:m[1]+new+m[2],text,count=1,flags=re.M)
-        if n!=1:raise ValueError('IO record replacement was not unique')
+        if row in replacements:raise ValueError('IO record replacement was not unique')
+        replacements[row]=new
         changed+=1
+    if replacements:
+        region=re.search(r'^PINS\s+\d+\s*;(.*?)^END PINS\s*$',text,re.M|re.S)
+        if not region:raise ValueError('Missing PINS section')
+        seen=set()
+        def replace(match):
+            row=match[2]
+            if row not in replacements:return match[0]
+            if row in seen:raise ValueError('IO record replacement was not unique')
+            seen.add(row)
+            return match[1]+replacements[row]+match[3]
+        body=re.sub(r'(^\s*-\s+)(.*?)(\s*;)',replace,region[1],flags=re.M|re.S)
+        if seen!=set(replacements):raise ValueError('IO replacement records differ')
+        text=text[:region.start(1)]+body+text[region.end(1):]
     return text,changed
 
 
@@ -51,14 +64,15 @@ def write_equivalent(src,dst,explicit=False):
             'changed_pins':count,'explicit_port_output':explicit,'physical_semantics_equal':True}
 
 
-def execute(stage,work,reference):
+def execute(stage,work,reference,backend=None):
     """Opt-in corrected SWERV adapter; original backend and parent stay frozen."""
-    from . import swerv_backend as b
+    from . import swerv_backend
+    b=backend or swerv_backend
     if stage not in ('macro_placement','fanout','placement','export_def','cts','to_drv','to_hold','legalization','timing'):
         raise ValueError('Unreviewed compatibility-study stage')
     work=Path(work);original_script=b.script;original_normalize=b.normalize_unplaced;events=[]
     def script(action,m):
-        text=original_script(action,m);prev=b.PREVIOUS[action]
+        text=original_script(action,m);prev=b.previous_stage(action,m)
         src=work/'result'/(prev+'.def');dst=work/'native-inputs'/(action+'.def')
         events.append({'direction':'load','stage':action,**write_equivalent(src,dst)})
         old='/work/result/'+prev+'.def';new='/work/native-inputs/'+action+'.def'

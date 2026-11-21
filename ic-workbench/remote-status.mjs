@@ -22,9 +22,9 @@ async function probe(selected=null, signal) {
       .replace('SELECTED = None', 'SELECTED = '+(selected?JSON.stringify(selected):'None')));
   });
 }
-export function remoteStatus() {
-  if(latest && Date.now()-latest.checkedAt<20000)return latest;
-  pending??=probe().catch(()=>({online:false,cases:[],jobs:null})).then(data=>latest={...data,checkedAt:Date.now()}).finally(()=>{pending=null;});
+export function remoteStatus({fresh=false}={}) {
+  if(!fresh&&latest && Date.now()-latest.checkedAt<20000)return latest;
+  pending??=probe().catch(()=>({online:false,cases:[],runnable_cases:[],jobs:null})).then(data=>latest={...data,checkedAt:Date.now()}).finally(()=>{pending=null;});
   return pending;
 }
 

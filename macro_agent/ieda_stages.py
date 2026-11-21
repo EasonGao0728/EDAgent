@@ -22,7 +22,7 @@ REGISTERED_CASES = {
     'ibench_gcd_legacy': (rt.ROOT/'cases/ibench/gcd_legacy', rt.ROOT/'cases/ibench/gcd_legacy/manifest.json'),
     'sky130_sram_pair': (rt.ROOT/'cases/sky130_sram_pair', rt.ROOT/'cases/sky130_sram_pair/manifest.json'),
 }
-for _aes_name in ('aes_sky130_t','aes_legacy','aes_core_sky130_t','swerv_nangate45'):
+for _aes_name in ('aes_sky130_t','aes_legacy','aes_core_sky130_t','swerv_nangate45','bp_be','bp_fe','bp_multi','s35932_nangate45_t'):
     REGISTERED_CASES[_aes_name]=(rt.ROOT/'cases/ibench'/_aes_name,rt.ROOT/'cases/ibench'/_aes_name/'manifest.json')
 
 

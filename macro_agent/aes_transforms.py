@@ -3,12 +3,29 @@ from collections import Counter
 import re
 
 BUFFERS={'sky130_fd_sc_hd__buf_1':('A','X'),'sky130_fd_sc_hd__buf_8':('A','X')}
-VALIDATION_VERSION='aes-endpoint-partitions-v2-preserve-declared-empty-nets'
+VALIDATION_VERSION='aes-endpoint-partitions-v3-verified-buffer-port-net-renames'
 
 def check(before,after,stage,buffer_masters=None,filler_pattern=r'sky130_fd_sc_hd__fill_(1|2|4|8)'):
     errors=[];old=before['components'];new=after['components'];added=set(new)-set(old)
-    for k in ('design','units','die','pins'):
+    optimizing=stage in ('fanout','cts','to_drv','to_hold')
+    for k in ('design','units','die'):
         if before[k]!=after[k]:errors.append('changed_'+k)
+    def pin_attributes(pins):
+        return {name:re.sub(r'\+ NET \S+', '+ NET',value) for name,value in pins.items()}
+    expected_pins=pin_attributes(before['pins']) if optimizing else before['pins']
+    actual_pins=pin_attributes(after['pins']) if optimizing else after['pins']
+    if expected_pins!=actual_pins:
+        errors.append('changed_pins')
+    if optimizing:
+        for design in (before,after):
+            owners={}
+            for net,terminals in design['nets'].items():
+                for inst,pin in terminals:
+                    if inst=='PIN':owners.setdefault(pin,[]).append(net)
+            for name,value in design['pins'].items():
+                declared=re.findall(r'\+ NET (\S+)',value)
+                if len(declared)!=1 or owners.get(name)!=declared:
+                    errors.append('pin_net_declaration_mismatch:'+name)
     for n,c in old.items():
         if new.get(n,{}).get('master')!=c['master']:errors.append('changed_original:'+n)
         elif c['placement'] and c['placement'][0]=='FIXED' and c!=new[n]:errors.append('changed_fixed:'+n)

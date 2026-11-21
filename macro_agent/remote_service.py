@@ -288,6 +288,9 @@ def artifacts(folder):
 
 def rpc(req):
     op=req['operation']
+    if op=='start' and req.get('goal')=='full_backend':
+        from .case_readiness import ready
+        ready(req['case_id'])
     if op=='runtime_status':
         from .remote_native import runtime_status
         return runtime_status()
