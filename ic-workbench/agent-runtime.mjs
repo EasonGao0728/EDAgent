@@ -209,10 +209,20 @@ export class AgentHub{
       if(checked.check){s.finalConsistency=checked.check;await this.event(s,'final_consistency',checked.check);}
       s.messages.push({id:randomUUID(),role:'assistant',content:checked.blocks,model:s.model,effort:s.effort});await this.event(s,'model_response',{model:s.model,effort:s.effort,blocks:checked.blocks});
       if(!calls.length){const incomplete=checked.check?.incomplete===true;await this.status(s,incomplete?'needs_evidence':'completed',incomplete?'诊断已展示 · 仍缺证据':'回复已完成',incomplete?'已有诊断保留展示；未完成子目标、缺失回执和局部更正已单列，未宣称全部完成。':s.task?.download_verified?'交付文件已下载并校验 SHA256；质量结论见报告。':'可以继续补充设计要求。');return;}
-      for(const call of calls){
+      for(const [callIndex,call] of calls.entries()){
         // Persist intent before dispatch; after crash no action is replayed automatically.
         try{const value=await this.execute(s,call,signal);s.messages.push({id:randomUUID(),role:'tool',name:call.name,toolCallId:call.id,content:[textBlock(JSON.stringify(value))]});await this.save(s);
-        }catch(e){s.messages.push({id:randomUUID(),role:'tool',name:call.name,toolCallId:call.id,content:[textBlock(JSON.stringify({error:e.message,execution_uncertain:true,note:'保留检查点；查询同一任务，不自动重新提交。'}))]});await this.save(s);throw e;}
+        }catch(e){
+          const replan=/^(?:host bridge: )?MAIN_DECISION_REQUIRED(?::|;|$)/.test(e.message);
+          const note=replan?'规划前置检查已拒绝动作，原生执行未开始。重新读取当前观察、查询工具候选并提交证据计划，不能重试同一直接动作。':'保留检查点；查询同一任务，不自动重新提交。';
+          s.messages.push({id:randomUUID(),role:'tool',name:call.name,toolCallId:call.id,content:[textBlock(JSON.stringify({error:e.message,execution_uncertain:!replan,note}))]});
+          if(replan){
+            for(const skipped of calls.slice(callIndex+1))s.messages.push({id:randomUUID(),role:'tool',name:skipped.name,toolCallId:skipped.id,content:[textBlock(JSON.stringify({error:'NOT_EXECUTED_REPLAN_REQUIRED',execution_uncertain:false,note}))]});
+            await this.event(s,'planning_guard_recovery',{code:'MAIN_DECISION_REQUIRED',blockedCall:call.id,skippedCalls:calls.slice(callIndex+1).map(c=>c.id),native_started:false});
+            break;
+          }
+          await this.save(s);throw e;
+        }
         if(s.job&&!terminal.has(s.job.status))await this.monitor(s,signal);
       }
     }throw Error('MODEL_BUDGET: 已达到本轮主循环上限，检查点已保存');

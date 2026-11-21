@@ -55,12 +55,16 @@ def promote(args):
             imported = project / "runs" / ("structural-" + args.case)
             if not (imported / "import.json").is_file():
                 imported = project / "runs" / ("qualification-" + args.case)
-            m = prepare(project, args.benchmarks, args.pdks, case, imported, ref, engine,args.floorplan_scale)
+            m = prepare(project, args.benchmarks, args.pdks, case, imported, ref, engine,args.floorplan_scale,args.hold_guard)
             binding = {str(p.relative_to(ref)): sha(p) for p in ref.rglob("*") if p.is_file()}
             binding.update({"import.def": sha(imported / "import.def"),
                             "stage_engine": sha(args.candidate)})
             if binding != progress["binding"]:
                 raise ValueError("Qualified profile inputs changed")
+            ancestry={"case_id":args.case,"original_netlist_sha256":case['assets']['netlist']['sha256'],
+                      "qualified_netlist_sha256":sha(ref/m['netlist']),
+                      "import_receipt":json.loads((imported/'import.json').read_bytes())}
+            (ref/'source-ancestry.json').write_text(json.dumps(ancestry,indent=2))
             m.update(schema_version="ieda_case_v1", backend="iEDA",
                      format_id="catalog_nangate45:" + args.case, hidden_reference_coordinates=False,
                      scripts_dir="script", config_dir="config", foundry_dir="data",
@@ -72,13 +76,16 @@ def promote(args):
                                           "timing":"Diagnostic cell-delay STA",
                                           "gds":"Abstract geometry export",
                                           "unavailable":["extracted RC timing","manufacturing signoff"]},
-                     provenance=["source-proof.json","qualification.json"])
+                     provenance=["source-proof.json","source-ancestry.json","qualification.json"])
             (ref / "script").mkdir()
             (ref / "manifest.json").write_text(json.dumps(m, indent=2))
             qualified_inputs = {str(p.relative_to(ref)): sha(p) for p in ref.rglob("*") if p.is_file()}
             implementations = {str(p.relative_to(project)): sha(p) for p in
                                [project / "macro_agent" / (n + ".py") for n in
                                 ("catalog_backend","swerv_backend","def_io_compat","aes_netlist","aes_transforms","liberty_buses","macro_stages")]}
+            if m.get('hold_compatibility_guard'):
+                implementations.update({str(p.relative_to(project)):sha(p) for p in
+                    [project/'environments/ieda-hold-guard-v1'/n for n in ('iEDA','manifest.json')]})
             receipt = {"case_id":args.case,"status":"passed","input_sha256":qualified_inputs,
                        "implementation_sha256":implementations,
                        "evidence":{"path":str(matches[0]),"sha256":sha(matches[0])},
@@ -96,4 +103,5 @@ if __name__ == "__main__":
     p.add_argument("case")
     p.add_argument("--variant",default="")
     p.add_argument("--floorplan-scale",type=float,default=1.0)
+    p.add_argument('--hold-guard',action='store_true')
     promote(p.parse_args())

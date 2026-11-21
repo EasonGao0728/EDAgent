@@ -195,6 +195,15 @@ def execute(stage,work,reference):
         cts=ROOT/'environments/ieda-swerv-cts/iEDA'
         if sha(cts)!=CTS_SHA256:raise ValueError('Registered CTS identity changed')
         args+=['--mount',f'type=bind,source={cts.parent},target=/cts,readonly'];target=['/cts/iEDA','-script','/work/stage.tcl'];binary=CTS_SHA256
+    if stage=='to_hold' and m.get('hold_compatibility_guard'):
+        guard=ROOT/'environments/ieda-hold-guard-v1'
+        spec=json.loads((guard/'manifest.json').read_text())
+        expected='f881cd0b0118bbfdab115a1cd793f18a666a6148da0a755eb591851c88df6abd'
+        if (m['hold_compatibility_guard']!=expected or spec['binary_sha256']!=expected
+            or spec['base_sha256']!=BINARY_SHA256 or spec['unit_test']!='GUARD_BOUNDARIES_OK'
+            or sha(guard/'iEDA')!=expected):raise ValueError('Hold compatibility guard identity changed')
+        args+=['--mount',f'type=bind,source={guard},target=/hold,readonly']
+        target=['/hold/iEDA','-script','/work/stage.tcl'];binary=expected
     if stage=='routing':
         if sha(router)!=ROUTER_SHA256:raise ValueError('Router hash changed')
         args+=['--mount',f'type=bind,source={router.parent},target=/router,readonly'];target=['/router/iEDA','-script','/work/stage.tcl'];binary=ROUTER_SHA256

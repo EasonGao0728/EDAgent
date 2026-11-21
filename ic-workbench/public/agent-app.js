@@ -119,7 +119,7 @@ function drawCases(){
     const bound=s.task?.contract?.case_id, blocked=bound&&bound!==p.id;
     const progress=remote?.readiness?.[p.id];
     const qualification=remote?.qualifications?.[p.id];
-    const state=verified?'全流程已验证':progress||'全流程待验收';
+    const state=verified?'全流程已验证':progress?.includes('全流程')?'历史全流程结果 · 当前配置待复核':progress?progress+' · 全流程待验收':'全流程待验收';
     const adaptation=qualification?.floorplan_adaptation?.scale;
     const detail=[p.size,p.pdk,p.category,state,qualification?.drc_count!=null?'DRC '+qualification.drc_count+' 项':null,adaptation?'核心边长 '+adaptation+'× 适配版':null].filter(Boolean).join(' · ');
     return `<div class="case-row"><div><strong>${esc(p.id)}</strong><small>${esc(detail)}</small><small>${p.cells.toLocaleString()} 个标准单元 · <b>${p.macros} 个宏</b></small></div><button class="btn subtle" aria-label="${esc('选用 '+p.id)}" data-use-case="${esc(p.id)}" ${verified&&!blocked?'':'disabled'}>${blocked?'需新会话':verified?'选用':remote?.online?'待验收':'待连接'}</button></div>`;

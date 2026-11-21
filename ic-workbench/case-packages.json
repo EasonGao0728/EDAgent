@@ -910,7 +910,7 @@
     "top": "tinyram",
     "cells": 2983,
     "macros": 2,
-    "goal": "input_audit",
+    "goal": "full_backend",
     "files": [],
     "assets": {
       "design": {

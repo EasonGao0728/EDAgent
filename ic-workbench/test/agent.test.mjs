@@ -87,6 +87,38 @@ test('API session cannot select another session attachment or read arbitrary art
   }finally{await new Promise(r=>server.close(r));}
 });
 
+test('planning guard returns to inference and skips the remaining stale action batch',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-replan-'));let inference=0;const executed=[];
+  const adapter={async *stream(options){
+    inference++;
+    if(inference===1){
+      yield {type:'block-end',block:{type:'tool-call',id:'blocked',name:'mp_task_act',arguments:'{}'}};
+      yield {type:'block-end',block:{type:'tool-call',id:'stale',name:'mp_task_run',arguments:'{}'}};
+    }else if(inference===2){
+      const answers=options.messages.filter(m=>m.role==='tool');
+      assert.equal(answers.length,2);
+      for(const answer of answers)assert.equal(JSON.parse(answer.content[0].text).execution_uncertain,false);
+      assert.match(answers[0].content[0].text,/MAIN_DECISION_REQUIRED/);
+      assert.match(answers[1].content[0].text,/NOT_EXECUTED_REPLAN_REQUIRED/);
+      yield {type:'block-end',block:{type:'tool-call',id:'planned',name:'mp_task_execute_plan',arguments:'{}'}};
+    }else yield {type:'block-end',block:{type:'text',text:'已读取重新规划后的执行结果'}};
+  }};
+  const hub=await new AgentHub({directory,adapter,transport:async()=>null}).init();
+  hub.execute=async(_s,call)=>{executed.push(call.name);if(call.id==='blocked')throw Error('host bridge: MAIN_DECISION_REQUIRED: inspect, discover and submit an evidence-backed plan; ');return {passed:true};};
+  const {id}=await hub.create();await hub.loop(hub.session(id),new AbortController().signal);
+  assert.deepEqual(executed,['mp_task_act','mp_task_execute_plan']);
+  assert.equal(inference,3);assert.equal(hub.session(id).status.phase,'completed');
+  assert.ok(hub.session(id).events.some(e=>e.type==='planning_guard_recovery'&&!e.native_started));
+});
+
+test('permission and uncertain execution failures never enter the planning recovery path',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-no-blind-retry-'));let inference=0;
+  const hub=await new AgentHub({directory,transport:async()=>null,adapter:{async *stream(){inference++;yield {type:'block-end',block:{type:'tool-call',id:'unknown',name:'mp_task_run',arguments:'{}'}};}}}).init();
+  hub.execute=async()=>{throw Error('host bridge: PermissionError: [WinError 5]');};
+  const {id}=await hub.create();await assert.rejects(()=>hub.loop(hub.session(id),new AbortController().signal),/PermissionError/);
+  assert.equal(inference,1);assert.equal(JSON.parse(hub.session(id).messages.at(-1).content[0].text).execution_uncertain,true);
+});
+
 test('server package selection validates origin and pins the start case',async()=>{
   const selected='swerv_nangate45',text='使用服务器输入';
   assert.equal(validateTurn({text,serverCase:selected}).serverCase,selected);

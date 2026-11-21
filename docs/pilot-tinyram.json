@@ -1,0 +1,50 @@
+{
+  "case_id": "tinyram",
+  "original_standard_cells": 2983,
+  "hard_macros": 2,
+  "normalized_instances": 3053,
+  "original_netlist_sha256": "6a986827bb677a9a76870249a86923678c10b3c500d0a4674c979b720cb26c96",
+  "completed_after_import": [
+    "floorplan",
+    "macro_placement",
+    "fanout",
+    "placement",
+    "validate",
+    "export_def",
+    "cts",
+    "to_drv",
+    "to_hold",
+    "legalization",
+    "routing",
+    "filler",
+    "drc",
+    "timing",
+    "gds_export",
+    "routed_readback"
+  ],
+  "native_routing_seconds": 256.578,
+  "native_drc_count": 1041,
+  "physical_quality_passed": false,
+  "signoff_clean": false,
+  "hold_binary_sha256": "f881cd0b0118bbfdab115a1cd793f18a666a6148da0a755eb591851c88df6abd",
+  "router_sha256": "9f6c91ac6a58a00feaa63ba5eef37cfd240a4b60dd1fedba0654439763a3a6f8",
+  "final_def_sha256": "38b7f298a3a118e92d1af285a21dee7c9ac3174cf52413c2cf91c21a24b9f746",
+  "final_gds_sha256": "0d176c09544ada2193a3c2297ffeb96a967004da9d4077f839154886d4ee303b",
+  "routed_readback_equal": true,
+  "resources": {
+    "cpu_threads": 4,
+    "per_process_address_space_gib": 8,
+    "routing_budget_seconds": 5400
+  },
+  "limitations": [
+    "Research SRAM models",
+    "Diagnostic timing without extracted SPEF",
+    "Abstract GDS geometry",
+    "Separate workbench validation required"
+  ],
+  "retained_failure": {
+    "stage": "to_hold",
+    "returncode": 136,
+    "resolution": "Explicit opt-in divisor guard; prior stages retained"
+  }
+}

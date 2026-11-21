@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 from . import swerv_backend as native
 
-CASES = ("bp_be", "bp_fe", "bp_multi", "s35932_nangate45_t")
+CASES = ("bp_be", "bp_fe", "bp_multi", "s35932_nangate45_t", "tinyram")
 ROOT = native.ROOT
 VERSION = "catalog-nangate-full-v1"
 COMPATIBLE = {"macro_placement", "fanout", "placement", "export_def", "cts",
@@ -62,6 +62,8 @@ def for_case(case_id, reference_root=None):
         implementations += [ROOT / "environments/ieda-aes-router/iEDA",
                             ROOT / "environments/ieda-aes-router/manifest.json",
                             ROOT / "environments/ieda-swerv-cts/iEDA"]
+        if m.get('hold_compatibility_guard'):
+            implementations += [ROOT/'environments/ieda-hold-guard-v1'/n for n in ('iEDA','manifest.json')]
         return sources + implementations + exporter_files()
 
     def setup(work):
@@ -132,6 +134,8 @@ def package(state, folder, backend):
     for old in ("当前案例输出完成；整体第一阶段验收仍为部分完成，尚不能证明自动宏布局。",
                 "当前双 SRAM 宏布局案例输出完成；整体第一阶段和完整后端验收另列，不由本次案例单独认证。"):
         text = text.replace(old, "本次登记案例完成全后端编排与产物验证。")
+    if m.get('hold_compatibility_guard'):
+        text=text.replace('</h1>','</h1><p>Hold 使用已固定哈希的隔离除零兼容修复，属于当前快照的局部修补，非上游官方构建；其余阶段保留登记版本。工具身份见冻结清单和原生执行回执。</p>',1)
     if m.get("floorplan_adaptation"):
         scale=m["floorplan_adaptation"]["scale"]
         text=text.replace("</h1>","</h1><p>本次使用核心边长 "+str(scale)+
