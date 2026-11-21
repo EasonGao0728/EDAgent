@@ -4,7 +4,11 @@ EDAgent 的工作台和主 Agent 在 Windows 上运行，Linux 服务器执行 i
 
 ## 安装工作台
 
-安装 Git、带 Windows 启动器的 Python 3.11 或更高版本、Node.js 24（含 npm），以及 Windows OpenSSH 客户端。打开 PowerShell 执行以下命令。
+在 Windows 上安装带启动器的 Python 3.11+、Node.js 24+（含 npm）和 Windows OpenSSH 客户端。[下载源码 ZIP](https://github.com/EasonGao0728/EDAgent/archive/refs/heads/main.zip)，解压后双击 **Open EDAgent.cmd**。首次启动会安装项目依赖并打开浏览器，再次双击会复用当前工作台。使用已授权的远端算力时，用户的电脑无需安装 Linux、WSL 或 Docker。
+
+如果 Windows 提示下载的脚本未经签名，可以通过 Git 克隆官方仓库，再从克隆目录双击启动器。受组织管理的电脑请遵循本单位的脚本策略。
+
+开发者也可以安装 Git，从 PowerShell 运行以下命令。
 
 ```powershell
 git clone https://github.com/EasonGao0728/EDAgent.git

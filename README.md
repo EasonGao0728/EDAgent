@@ -10,7 +10,11 @@ The walkthrough uses **SWERV on Nangate45** (`swerv_nangate45`), a registered de
 
 ### 1. Install and open the workbench
 
-Install Git, Python 3.11 or newer with the Windows Python launcher, Node.js 24 with npm, and the Windows OpenSSH client. Run these commands in PowerShell. Keep the terminal running while using the workbench.
+On your Windows PC, install Python 3.11+ with the Windows Python launcher, Node.js 24+ with npm, and the Windows OpenSSH client. Download and extract the [source ZIP](https://github.com/EasonGao0728/EDAgent/archive/refs/heads/main.zip), then double-click **Open EDAgent.cmd**. First launch installs the project dependencies and opens the workbench in your browser. Later launches reuse the running service. The authorized worker runs iEDA, so users can use Windows without installing Linux, WSL or Docker.
+
+If Windows marks the downloaded scripts as unsigned, clone the official repository with Git and run the launcher from the clone. On a managed PC, follow your organization's script policy.
+
+For a developer checkout, install Git and run the equivalent commands in PowerShell. With this foreground launch, keep the terminal open.
 
 ```powershell
 git clone https://github.com/EasonGao0728/EDAgent.git
@@ -59,5 +63,7 @@ The figure also shows the target **Algorithm Agent**. When the library lacks a s
 The [detailed roadmap](ROADMAP.md) and [qualification records](docs/QUALIFICATION.md) distinguish planned features from measured results.
 
 ## Contributing
+
+Release users and contributors use the same workbench. To propose a change, fork the repository, create a branch and open a pull request against `main`. Invited collaborators can create their feature branches directly in this repository. Access to a compute worker is granted separately by its operator.
 
 For a flow or tool issue, include the case ID, process and library revision, failed stage and relevant log excerpt. A new full-flow profile should include input and build hashes, routing evidence, DRC results, DEF readback and GDS verification. Share design files only when you have redistribution rights. EDAgent's original code is covered by the [MIT license](LICENSE); third-party tools and libraries retain their own terms.

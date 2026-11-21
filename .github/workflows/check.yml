@@ -19,3 +19,17 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm --prefix ic-workbench run check
+
+  windows-workbench:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Start the Windows workbench and verify its session interface
+        shell: powershell
+        run: ./tests/test-windows-workbench.ps1
