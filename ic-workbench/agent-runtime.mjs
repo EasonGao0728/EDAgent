@@ -221,6 +221,9 @@ export class AgentHub{
       }
       const visible=await visibleToolNames(taskRun(this.agent(s)));
       const needsPlan=task?.main_decision?.decision_required===true;
+      if(needsPlan)for(const name of ['mp_task_inspect','mp_task_choices','mp_task_plan'])visible.add(name);
+      if(task?.main_decision?.current_plan?.status==='planned')visible.add('mp_task_execute_plan');
+      if(task?.contract?.goal==='full_backend'&&task.status==='running'&&!needsPlan)visible.add('mp_task_run');
       const schemas=[...definitions.values()].filter(t=>visible.has(t.name)&&(!task||taskToolNames.includes(t.name))
         &&!(needsPlan&&['mp_task_act','mp_task_run'].includes(t.name))).map(({name,description,parameters})=>({name,description,parameters}));
       const decision=await assembleDecisionContext(taskRun(this.agent(s)),task,{tools:schemas,messages:s.messages,job:s.job});
@@ -238,7 +241,7 @@ export class AgentHub{
         try{for await(const event of this.adapter.stream(options)){if(event.type==='block-end')blocks.push(event.block);}}
         catch(e){
           signal.throwIfAborted();
-          if(!['network_error','server_error','remote_error','stream_interrupted','stream_ended_without_completion','stream_timeout','response_failed'].includes(e.code))throw e;
+          if(!['network_error','server_error','remote_error','stream_interrupted','stream_ended_without_completion','stream_timeout','response_failed'].includes(e.code)&&!(e.code==='http_error'&&[502,503,504].includes(e.httpStatus)))throw e;
           await this.event(s,'model_request_paused',{code:e.code,detail:e.message,stage:task?.phase,tool_dispatched:false});
           await this.status(s,'model_paused','模型请求中断，已保存进度',e.message);
           return;

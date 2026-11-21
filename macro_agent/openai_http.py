@@ -45,16 +45,27 @@ class HandshakeConnection(http.client.HTTPSConnection):
     def connect(self):
         # connect() returns before http.client sends any origin HTTP headers or body.
         # Retry only a closed handshake, using the same proxy, SNI and trust store.
-        for attempt in range(3):
-            try:
-                return super().connect()
-            except (ssl.SSLEOFError, ConnectionResetError):
-                if self.sock is not None:
-                    self.sock.close()
-                    self.sock = None
-                if attempt == 2:
-                    raise
-                time.sleep(0.5 * (attempt + 1))
+        timeout = self.timeout
+        deadline = time.monotonic() + timeout if isinstance(timeout, (float, int)) else None
+        try:
+            for attempt in range(3):
+                if deadline is not None:
+                    self.timeout = max(0.001, deadline - time.monotonic())
+                try:
+                    super().connect()
+                    if self.sock is not None and deadline is not None:
+                        self.sock.settimeout(timeout)
+                    return
+                except (ssl.SSLEOFError, ConnectionResetError):
+                    if self.sock is not None:
+                        self.sock.close()
+                        self.sock = None
+                    backoff = 0.5 * (attempt + 1)
+                    if attempt == 2 or (deadline is not None and time.monotonic() + backoff >= deadline):
+                        raise
+                    time.sleep(backoff)
+        finally:
+            self.timeout = timeout
 
 
 class HandshakeHandler(urllib.request.HTTPSHandler):

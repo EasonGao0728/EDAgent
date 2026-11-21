@@ -215,3 +215,16 @@ test('decision checkpoint reads the summary and matching catalog once; a changed
   assert.ok(canDeliverCompletedTask({status:'target_met',goal_certified:true},{status:'completed',request:{operation:'run'}}));
   assert.ok(!canDeliverCompletedTask({status:'target_met',goal_certified:true},{status:'completed',request:{operation:'act',action:'routing'}}));
 });
+
+test('explicit execution binds the approved native plan ID and retains the server gate',async()=>{
+  const {executeNativePlan}=await import('../../dsh/main-task-tools.mjs');
+  const plan={status:'planned',plan_id:'plan-'+'a'.repeat(24),tool_card:{native_stage:'timing'},evidence_id:'current'};
+  const requests=[],signal=new AbortController().signal;
+  const invoke=async r=>{requests.push(r);return {job:{job_id:'durable'}};};
+  assert.equal((await executeNativePlan(plan,'run',signal,invoke)).approved_plan.stage,'timing');
+  assert.equal(requests[0].operation,'decision_execute');assert.equal(requests[0].plan_id,plan.plan_id);
+  await executeNativePlan(plan,'run',signal,invoke);assert.deepEqual(requests[0],requests[1]);
+  await executeNativePlan({...plan,status:'completed'},'run',signal,invoke);
+  await executeNativePlan({...plan,tool_card:{}},'run',signal,invoke);assert.equal(requests.length,2);
+  await assert.rejects(executeNativePlan(plan,'run',signal,async()=>{throw Error('PLAN_IMPLEMENTATION_CHANGED');}),/PLAN_IMPLEMENTATION_CHANGED/);
+});

@@ -19,6 +19,15 @@ export function taskRun(agent){
   if(!id)throw Error('DSH session identity missing');
   return path.join(root,'runs','dsh-desktop-'+createHash('sha256').update(id).digest('hex').slice(0,16),'main-task');
 }
+// This optional path requires an explicit model decision to both plan and run.
+export async function executeNativePlan(plan,run,signal,invoke=bridge){
+  if(plan?.status!=='planned'||!plan.tool_card?.native_stage)return plan;
+  if(!/^plan-[0-9a-f]{24}$/.test(plan.plan_id))throw Error('Invalid approved plan identity');
+  signal?.throwIfAborted();
+  const value=await invoke({mode:'task',operation:'decision_execute',run,plan_id:plan.plan_id,
+    action_id:plan.plan_id+'-execute'},signal);
+  return {...value,approved_plan:{plan_id:plan.plan_id,stage:plan.tool_card.native_stage,evidence_id:plan.evidence_id}};
+}
 export function registerTaskTools(ctx){
   const pending=new WeakMap();
   const register=tool=>ctx.tools.register({...tool,async execute(args,exec){
@@ -69,7 +78,7 @@ export function registerTaskTools(ctx){
     ['mp_task_open','open','打开用户指定的已完成远程任务。只复盘既有证据用purpose=evidence_review：本会话20次模型调用/1小时，接口禁止执行、改参、取消及重新绑定，不改变旧审查预算。需要实际新质量实验才用quality_review；它不会续期已过期的历史审查预算。',{task_id:{type:'string',required:true},purpose:{type:'string',enum:['quality_review','evidence_review']}}],
     ['mp_task_inspect','decision_inspect','读取当前事实或有来源的历史证据，返回可供计划引用的 evidence_id。local_short 是同一父DEF的局部几何，prior_comparison 是已做过的对照，不会重复布线。terminals 与 route_branches 用 name 指定网络，支持续页。episodes 为同案例同后端版本的历史经验，不能当当前测量。',{kind:{type:'string',enum:['summary','terminals','tracks','blockages','route_branches','local_short','prior_comparison','experiment_result','episodes'],required:true},name:{type:'string'},cursor:{type:'number'},limit:{type:'number'}}],
     ['mp_task_choices','decision_catalog','按当前状态、范围、证据与预算给出合格工具卡；主Agent负责选择，不由宿主替模型排名。',{}],
-    ['mp_task_plan','decision_plan','主Agent提交结构化选择：工具、当前证据、依据、预期效果和未知项。宿主拒绝过期证据及不合格工具。预期效果只是待验证假设。',{decision_state_id:{type:'string',required:true},tool_id:{type:'string',required:true},evidence_id:{type:'string',required:true},reason:{type:'string',required:true},expected_effect:{type:'string',required:true},uncertainties:{type:'string',required:true}}],
+    ['mp_task_plan','decision_plan','主Agent提交结构化选择：工具、当前证据、依据、预期效果和未知项。宿主拒绝过期证据及不合格工具。明确要立即执行选中的原生阶段时，可设置 execute_native=true。宿主用同一 plan_id 和既有执行门禁提交一次持久作业；省略时仅保存计划。',{execute_native:{type:'boolean'},decision_state_id:{type:'string',required:true},tool_id:{type:'string',required:true},evidence_id:{type:'string',required:true},reason:{type:'string',required:true},expected_effect:{type:'string',required:true},uncertainties:{type:'string',required:true}}],
     ['mp_task_execute_plan','decision_execute','执行已选择的计划。原生iEDA只在服务器持久作业中运行，返回job_id后结束当前轮等待结果；只读工具直接返回结果。实验不覆盖生产结果，不重跑已完成阶段。',{plan_id:{type:'string',required:true}}],
     ['mp_task_cancel_plan','decision_cancel','取消尚未执行的计划以便重新选择；运行中任务必须用job_cancel。',{plan_id:{type:'string',required:true},reason:{type:'string',required:true}}],
     ['mp_task_decision_report','decision_report','生成可下载的主Agent感知、选择、工具执行和质量反馈轨迹报告，不声明整体P1通过。随后download显示交付卡片。',{}],
@@ -95,8 +104,10 @@ export function registerTaskTools(ctx){
     register(defineTool({name,description,parameters,output,async execute(args,exec){
       exec.signal?.throwIfAborted();
       const attachment_inputs=operation==='start'?await conversationAttachments(ctx,exec.agent):undefined;
-      const value=await bridge({mode:'task',operation,run:taskRun(exec.agent),action_id:exec.callId,...args,
+      const {execute_native,...planArgs}=operation==='decision_plan'?args:{};
+      const value=await bridge({mode:'task',operation,run:taskRun(exec.agent),action_id:exec.callId,...(operation==='decision_plan'?planArgs:args),
         ...(attachment_inputs===undefined?{}:{attachment_inputs})},exec.signal);
+      if(operation==='decision_plan'&&execute_native===true)return executeNativePlan(value,taskRun(exec.agent),exec.signal);
       if(operation==='start'||(operation==='feedback_inspect'&&['input','quality'].includes(args.kind))){
         const kind=operation==='start'?'input':args.kind;
         try{
