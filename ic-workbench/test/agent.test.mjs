@@ -228,3 +228,16 @@ test('explicit execution binds the approved native plan ID and retains the serve
   await executeNativePlan({...plan,tool_card:{}},'run',signal,invoke);assert.equal(requests.length,2);
   await assert.rejects(executeNativePlan(plan,'run',signal,async()=>{throw Error('PLAN_IMPLEMENTATION_CHANGED');}),/PLAN_IMPLEMENTATION_CHANGED/);
 });
+
+test('a compact verified delivery receipt restores the matching task card after restart',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-delivery-card-'));
+  const hub=await new AgentHub({directory}).init(),{id}=await hub.create(),s=hub.session(id);
+  const run=taskRun(hub.agent(s));
+  s.task={run,state_id:'A',goal_certified:true,plan:[],contract:{}};
+  const receipt={run,state_id:'A',download_verified:true,deliverables:{}};
+  s.events.push({type:'tool_end',name:'mp_task_download',value:receipt});
+  hub.observeValue(s,{...receipt,state_id:'other'});assert.equal(s.task.download_verified,undefined);
+  await hub.save(s);const reopened=await new AgentHub({directory}).init();
+  assert.equal(reopened.session(id).task.download_verified,true);
+  assert.deepEqual(reopened.session(id).task.plan,[]);
+});

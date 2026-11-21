@@ -74,6 +74,11 @@ export class AgentHub{
   async init(){await fs.mkdir(this.directory,{recursive:true});for(const name of await fs.readdir(this.directory)){
     if(!/^silicon-[a-f0-9-]+\.json$/.test(name))continue;
     const s=JSON.parse(await fs.readFile(path.join(this.directory,name),'utf8'));
+    if(s.task?.goal_certified&&!s.task.download_verified){
+      const receipt=s.events.findLast(e=>e.type==='tool_end'&&e.name==='mp_task_download'&&
+        e.value?.download_verified===true&&e.value.state_id===s.task.state_id&&e.value.run===s.task.run);
+      if(receipt)this.observeValue(s,receipt.value);
+    }
     if(s.busy){s.busy=false;s.status={phase:'interrupted',title:'工作台服务已重启',detail:'检查点已保留。可查询持久作业，再发送消息继续；不会自动重新提交。',at:Date.now()};}
     this.sessions.set(s.id,s);
   }return this;}
@@ -144,6 +149,9 @@ export class AgentHub{
     }catch(e){await this.event(s,'tool_error',{name:call.name,callId:call.id,error:e.message,durationMs:Date.now()-started});throw e;}
   }
   observeValue(s,value){const task=value?.task||value;if(task?.state_id&&task.contract&&task.plan)s.task=task;if(value?.job)s.job=value.job;if(task?.job)s.job=task.job;
+    if(task?.download_verified===true&&task.deliverables&&s.task?.goal_certified&&task.state_id===s.task.state_id&&task.run===s.task.run){
+      s.task={...s.task,download_verified:true,deliverables:task.deliverables};
+    }
     if(value?.perception_report){for(const ref of [value.perception_report.report,value.perception_report.data]){
       if(ref?.path&&ref.sha256&&path.dirname(path.resolve(ref.path))===path.resolve(taskRun(this.agent(s)))){
         const name=path.basename(ref.path);s.artifacts=s.artifacts.filter(a=>a.name!==name);s.artifacts.push({kind:ref.path.endsWith('.html')?'report':'perception_data',name,sha256:ref.sha256,bytes:ref.bytes,url:`/api/sessions/${s.id}/artifacts/${encodeURIComponent(name)}`});
