@@ -60,6 +60,7 @@ def lef_cells(path, units):
             raise ValueError('Unsupported LEF size/origin')
         cells[match[1]] = {'size': [int(Decimal(v)*units) for v in size.groups()],
                           'hard_macro': bool(re.search(r'CLASS\s+BLOCK\b', match[2])),
+                          'spacer': bool(re.search(r'^\s*CLASS\s+CORE\s+SPACER\s*;', match[2], re.M | re.I)),
                           'pins':re.findall(r'^\s*PIN\s+(\S+)\s*$',match[2],re.M),
                           'site':(re.search(r'\bSITE\s+(\S+)\s*;',match[2]) or [None,None])[1],
                           'symmetry':(re.search(r'\bSYMMETRY\s+([^;]+);',match[2]) or [None,''])[1].split()}

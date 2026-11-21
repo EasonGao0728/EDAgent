@@ -3,7 +3,6 @@ from pathlib import Path
 import hashlib
 import html
 import json
-import re
 import shutil
 import time
 from .def_validation import read_def,lef_cells
@@ -50,23 +49,23 @@ def render(def_path,lefs,target):
         return f'<rect x="{x0+(x-d[0])*scale:.3f}" y="{y0+(d[3]-y-h)*scale:.3f}" width="{w*scale:.3f}" height="{h*scale:.3f}" fill="{color}" stroke="#ffffff" stroke-width="0.12"/>'
     sha=ref(def_path)['sha256'];parts=['<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="930" viewBox="0 0 1120 930">',
         '<rect width="1120" height="930" fill="white"/>',f'<text x="40" y="40" font-size="25">iEDA placement: {html.escape(design["design"])}</text>',
-        '<text x="40" y="70" font-size="16">Final DEF geometry | blue: standard cells | purple: hard macros | orange: signal IO</text>',
+        '<text x="40" y="70" font-size="16">Blue: non-filler standard cells | Purple: hard macros</text>',
         f'<text x="40" y="96" font-size="13">DEF SHA256: {sha}</text>',rect(d[0],d[1],d[2]-d[0],d[3]-d[1],'#eef2f6')]
+    hidden_spacers=0
     for name,value in design['components'].items():
-        cell=cells[value['master']];_,x,y,o=value['placement'];w,h=cell['size']
+        cell=cells[value['master']]
+        if cell['spacer']:
+            hidden_spacers+=1
+            continue
+        _,x,y,o=value['placement'];w,h=cell['size']
         if o in ('E','W','FE','FW'):w,h=h,w
         parts.append('<g><title>'+html.escape(name)+'</title>'+rect(x,y,w,h,'#8049b2' if cell['hard_macro'] else '#347db7')+'</g>')
-    io=0
-    for name,pin in design['pins'].items():
-        p=re.search(r'\+ (?:PLACED|FIXED|COVER) \( (-?\d+) (-?\d+) \)',pin)
-        if p:
-            io+=1;parts.append(f'<circle cx="{x0+(int(p[1])-d[0])*scale:.3f}" cy="{y0+(d[3]-int(p[2]))*scale:.3f}" r="3" fill="#e17d20"><title>{html.escape(name)}</title></circle>')
     um=(d[2]-d[0])/design['units']/5;pixels=um*design['units']*scale
     parts += [f'<path d="M80 820 h{pixels:.3f}" stroke="#22374b" stroke-width="3"/>',f'<text x="80" y="845" font-size="16">{um:.3f} microns</text>',
-        f'<text x="80" y="875" font-size="16">{len(design["components"])} instances; {io} signal IO anchors. PDN logical names have no IO geometry.</text>',
+        f'<text x="80" y="875" font-size="16">{len(design["components"])-hidden_spacers} visible instances; {hidden_spacers} filler cells hidden.</text>',
         '<text x="80" y="901" font-size="15">Placement only. No routed wires, DRC/LVS or PPA signoff.</text></svg>']
     target.write_text('\n'.join(parts),encoding='utf-8')
-    return {'source_def':ref(def_path),'preview':ref(target),'method':'DEF/LEF rectangles and DEF IO anchors; no synthetic coordinates','aggregated':False}
+    return {'source_def':ref(def_path),'preview':ref(target),'method':'DEF/LEF instance rectangles; CORE SPACER and IO anchors hidden','hidden_spacers':hidden_spacers,'aggregated':False}
 
 def package(state,folder,backend,final_source=None):
     folder=Path(folder);final=folder/'final.def'
