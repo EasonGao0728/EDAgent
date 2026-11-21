@@ -95,6 +95,7 @@ test('server package selection validates origin and pins the start case',async()
   const hub=new AgentHub(),s={inputPackage:selected,events:[],messages:[{role:'user',content:[{type:'file',attachment:{name:'old.v'}}]}]};
   assert.deepEqual(hub.agent(s).session.deriveMessages()[0].content,[]);
   await assert.rejects(hub.execute(s,{name:'mp_task_start',id:'case-test',arguments:JSON.stringify({case_id:'aes_legacy',goal:'full_backend'})},new AbortController().signal),/匹配所选服务器输入包/);
+  await assert.rejects(hub.execute(s,{name:'mp_task_start',id:'goal-test',arguments:JSON.stringify({case_id:selected,goal:'placement_def'})},new AbortController().signal),/执行完整后端/);
 });
 
 test('unqualified or offline server cases cannot enter the agent loop',async()=>{

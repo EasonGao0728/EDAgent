@@ -129,6 +129,9 @@ export class AgentHub{
     if(violations.length||Object.keys(args).some(k=>!Object.hasOwn(tool.parameters.properties,k)))throw Error('工具参数校验失败');
     const identity=dispatchIdentity(s.events,call,args);args=identity.args;
     if(call.name==='mp_task_start' && s.inputPackage && args.case_id!==s.inputPackage)throw Error('启动案例必须匹配所选服务器输入包 '+s.inputPackage);
+    if(call.name==='mp_task_start' && s.inputPackage && packages.find(p=>p.id===s.inputPackage)?.goal==='full_backend' && args.goal!=='full_backend'){
+      throw Error('所选服务器案例需要执行完整后端，请设置 goal=full_backend。');
+    }
     const exec={name:call.name,arguments:args,callId:identity.id,agent:this.agent(s),signal};
     for(const guard of guards){const denied=guard(exec);if(denied)throw Error(denied);}
     await this.status(s,'acting','正在调用 '+call.name,args.reason||tool.description.slice(0,100));
