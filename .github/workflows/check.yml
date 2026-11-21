@@ -16,6 +16,7 @@ jobs:
       - run: python examples/placement_metrics.py
       - run: python -m unittest discover -s tests -p test_core.py -v
       - run: python -m unittest discover -s tests -p test_catalog_qualification.py -v
+      - run: python -m unittest discover -s tests -p test_case_admission_budget.py -v
       - run: python -m unittest discover -s tests -p test_buffer_output_pin.py -v
       - run: python -m unittest discover -s tests -p test_def_io_compat.py -v
       - run: npm ci --ignore-scripts
