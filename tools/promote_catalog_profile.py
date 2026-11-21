@@ -55,7 +55,7 @@ def promote(args):
             imported = project / "runs" / ("structural-" + args.case)
             if not (imported / "import.json").is_file():
                 imported = project / "runs" / ("qualification-" + args.case)
-            m = prepare(project, args.benchmarks, args.pdks, case, imported, ref, engine,args.floorplan_scale,args.hold_guard)
+            m = prepare(project, args.benchmarks, args.pdks, case, imported, ref, engine,args.floorplan_scale,args.hold_guard,args.cts_wirelength_unit_um,args.drv_iterations)
             binding = {str(p.relative_to(ref)): sha(p) for p in ref.rglob("*") if p.is_file()}
             binding.update({"import.def": sha(imported / "import.def"),
                             "stage_engine": sha(args.candidate)})
@@ -104,4 +104,6 @@ if __name__ == "__main__":
     p.add_argument("--variant",default="")
     p.add_argument("--floorplan-scale",type=float,default=1.0)
     p.add_argument('--hold-guard',action='store_true')
+    p.add_argument('--cts-wirelength-unit-um',type=int)
+    p.add_argument('--drv-iterations',type=int)
     promote(p.parse_args())

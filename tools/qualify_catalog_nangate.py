@@ -53,7 +53,7 @@ def clock(sdc):
     return name,port
 
 
-def prepare(project,bench,pdks,case,receipt_dir,ref,stage_engine,floorplan_scale=1.0,hold_guard=False):
+def prepare(project,bench,pdks,case,receipt_dir,ref,stage_engine,floorplan_scale=1.0,hold_guard=False,cts_wirelength_unit_um=None,drv_iterations=None):
     from macro_agent.aes_netlist import verify
     from macro_agent.def_validation import read_def
     row=resolve_inputs(case,bench,project,pdks)
@@ -113,11 +113,22 @@ def prepare(project,bench,pdks,case,receipt_dir,ref,stage_engine,floorplan_scale
         (ref/"tools").mkdir()
         shutil.copy2(template/"tools/hmetis2.0pre1",ref/"tools/hmetis2.0pre1")
     shutil.copytree(template/"config",ref/"config")
+    if cts_wirelength_unit_um is not None:
+        if not math.isfinite(cts_wirelength_unit_um) or cts_wirelength_unit_um <= 0:
+            raise ValueError("CTS characterization wirelength unit must be positive and finite")
+        cfg=ref/"config/cts_default_config.json"
+        settings=json.loads(cfg.read_bytes())
+        settings["wirelength_unit_um"]=cts_wirelength_unit_um
+        cfg.write_text(json.dumps(settings,indent=2))
     for cfg in (ref/"config").glob("*.json"):
         value=json.loads(cfg.read_bytes())
         files=value.get("file_path",{})
         if files:
             files.update(lib_files=["/reference/"+k for k in m["libs"]],lef_files=["/reference/"+k for k in [m["tech_lef"],*m["cell_lefs"]]],sdc_file="/reference/"+m["sdc"])
+            if cfg.name=="to_default_config_drv.json" and drv_iterations is not None:
+                if not 1 <= drv_iterations <= value["drv_optimize_iter_number"]:
+                    raise ValueError("DRV trial iterations must be within the reference budget")
+                value["drv_optimize_iter_number"]=drv_iterations
             if not macros and files.get("def_file")=="/work/result/macro_placement.def":files["def_file"]="/work/result/floorplan.def"
             cfg.write_text(json.dumps(value,indent=2))
     (ref/"manifest.json").write_text(json.dumps(m,indent=2))
@@ -158,7 +169,7 @@ def main(args):
         (work/"handles").mkdir(exist_ok=True)
         os.environ["AIEDA_NATIVE_HANDLES"]=str(work/"handles")
         with tempfile.TemporaryDirectory(dir=parent,prefix="refs-") as tmp:
-            ref=Path(tmp);m=prepare(project,args.benchmarks,args.pdks,case,imported,ref,engine,args.floorplan_scale,args.hold_guard)
+            ref=Path(tmp);m=prepare(project,args.benchmarks,args.pdks,case,imported,ref,engine,args.floorplan_scale,args.hold_guard,args.cts_wirelength_unit_um,args.drv_iterations)
             stages=[s for s in engine.STAGES if s!="import_netlist" and (s!="macro_placement" or case["macros"])]
             binding={str(p.relative_to(ref)):digest(p) for p in ref.rglob("*") if p.is_file()}
             binding["import.def"]=digest(imported/"import.def")
@@ -236,5 +247,7 @@ if __name__=="__main__":
     parser.add_argument("--variant",default="",help="Preserve a distinct qualification branch")
     parser.add_argument("--floorplan-scale",type=float,default=1.0)
     parser.add_argument('--hold-guard',action='store_true',help='Explicitly qualify the existing pinned hold division guard')
+    parser.add_argument('--cts-wirelength-unit-um',type=int,help='Native iCTS wirelength characterization interval in microns')
+    parser.add_argument('--drv-iterations',type=int,help='Stop the native design-rule repair after this many iterations')
     parser.add_argument("case")
     main(parser.parse_args())
