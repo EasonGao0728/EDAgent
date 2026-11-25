@@ -1,4 +1,5 @@
 import {inspectUploadPackage} from './upload-check.mjs';
+import {placementView} from './placement-preview.mjs';
 import {packages, remoteStatus} from './remote-status.mjs';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
@@ -71,13 +72,13 @@ export function createServer({hub=new AgentHub()}={}){let ready;return http.crea
       if(url.pathname==='/api/providers/check'&&req.method==='POST'){await body();return json(res,200,await apiBridge({mode:'check'}));}
       if(url.pathname==='/api/sessions'&&req.method==='GET')return json(res,200,{sessions:hub.list()});
       if(url.pathname==='/api/sessions'&&req.method==='POST'){await body();return json(res,201,await hub.create());}
-      const match=url.pathname.match(/^\/api\/sessions\/(silicon-[a-f0-9-]+)(?:\/(turn|upload|input-check|refresh|stop|cancel-job|artifacts)(?:\/([^/]+))?)?$/);
+      const match=url.pathname.match(/^\/api\/sessions\/(silicon-[a-f0-9-]+)(?:\/(turn|upload|input-check|refresh|short-quality|stop|cancel-job|artifacts)(?:\/([^/]+))?)?$/);
       if(!match)return json(res,404,{error:'not_found'});
       const [,id,action,name]=match;
       if(!action&&req.method==='GET')return json(res,200,hub.view(hub.session(id)));
       if(action==='artifacts'&&name&&req.method==='GET'){
         const {data,ref}=await hub.artifact(id,decodeURIComponent(name));const inline=/\.(svg|html)$/.test(ref.name)&&!url.searchParams.has('download');
-        res.writeHead(200,{'Content-Type':ref.name.endsWith('.svg')?'image/svg+xml':ref.name.endsWith('.html')?'text/html; charset=utf-8':'application/octet-stream','Content-Disposition':`${inline?'inline':'attachment'}; filename="${ref.name}"`,'Content-Security-Policy':"sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'",'Cache-Control':'no-store'});return res.end(data);
+        res.writeHead(200,{'Content-Type':ref.name.endsWith('.svg')?'image/svg+xml':ref.name.endsWith('.html')?'text/html; charset=utf-8':'application/octet-stream','Content-Disposition':`${inline?'inline':'attachment'}; filename="${ref.name}"`,'Content-Security-Policy':"sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'",'Cache-Control':'no-store'});return res.end(inline && ref.kind==='preview' && ref.name==='placement.svg' && url.searchParams.get('view')==='compact' ? placementView(data) : data);
       }
       if(req.method!=='POST')return json(res,405,{error:'method_not_allowed'});
       if(action==='upload'){
@@ -94,6 +95,7 @@ export function createServer({hub=new AgentHub()}={}){let ready;return http.crea
       }
       if(action==='turn')return json(res,202,await hub.submit(id,b));
       if(action==='refresh')return json(res,200,await hub.refresh(id));
+      if(action==='short-quality')return json(res,200,await hub.shortQuality(id,b.action));
       if(action==='stop')return json(res,200,await hub.stop(id));
       if(action==='cancel-job')return json(res,200,await hub.cancelJob(id));
       return json(res,404,{error:'not_found'});

@@ -1,0 +1,114 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -31,6 +31,7 @@
+ #include <cstdlib>
+ #include <string>
+ #include <fstream>
++#include <sstream>
+ #include <thread>
+ #include <chrono>
+ 
+@@ -79,7 +80,7 @@
+     }
+     // DEF TRACKS locates parallel centerlines. A terminal can be on one
+     // centerline even beyond the last orthogonal tick at a die boundary.
+-    if (!pin->get_is_core() && current == target && onPreferredTrack(access.getRealLayerCoord())) {
++    if (current >= bottom && current <= top && onPreferredTrack(access.getRealLayerCoord())) {
+       result.push_back(access.getRealLayerCoord());
+     }
+     auto& layer = layers.at(target);
+@@ -548,6 +549,24 @@
+       }
+       y_shape_list.emplace_back(ur_y);
+     }
++    // A pin on a lower metal may escape by a vertical via onto an active
++    // layer's preferred track. Keep the via center within the same legal
++    // pin rectangle and its original manufacturing grid.
++    if (useDefTracks() && ll_x <= ur_x && ll_y <= ur_y) {
++      const auto& config = RTDM.getConfig();
++      for (int32_t active = config.bottom_routing_layer_idx; active <= config.top_routing_layer_idx; ++active) {
++        auto& layer = routing_layer_list[active];
++        if (layer.isPreferH()) {
++          for (int32_t y : RTUTIL.getScaleList(ll_y, ur_y, layer.getYTrackGridList())) {
++            layer_coord_list.emplace_back(x_shape_list[x_shape_list.size()/2], y, curr_layer_idx);
++          }
++        } else {
++          for (int32_t x : RTUTIL.getScaleList(ll_x, ur_x, layer.getXTrackGridList())) {
++            layer_coord_list.emplace_back(x, y_shape_list[y_shape_list.size()/2], curr_layer_idx);
++          }
++        }
++      }
++    }
+     // track grid
+     for (int32_t x : x_track_list) {
+       for (int32_t y : y_track_list) {
+@@ -613,6 +632,20 @@
+       }
+     }
+   }
++  if (useDefTracks() && !found_contact) {
++    const auto& config = RTDM.getConfig();
++    int32_t best_distance = INT32_MAX;
++    for (const auto& candidate : layer_coord_list) {
++      for (int32_t l = config.bottom_routing_layer_idx; l <= config.top_routing_layer_idx; ++l) {
++        int32_t distance = std::abs(candidate.get_layer_idx() - l);
++        if (distance < best_distance && onPreferredTrack(LayerCoord(candidate.get_x(), candidate.get_y(), l))) {
++          contact = candidate;
++          best_distance = distance;
++          found_contact = true;
++        }
++      }
++    }
++  }
+   uniformSampleCoordList(pa_model, layer_coord_list);
+   if (found_contact && std::find(layer_coord_list.begin(), layer_coord_list.end(), contact) == layer_coord_list.end()) {
+     if (static_cast<int32_t>(layer_coord_list.size()) == pa_model.get_pa_com_param().get_max_candidate_point_num()) {
+@@ -632,10 +665,11 @@
+ {
+   int32_t max_candidate_point_num = pa_model.get_pa_com_param().get_max_candidate_point_num();
+ 
++  if (layer_coord_list.empty()) return;
+   PlanarRect bounding_box = RTUTIL.getBoundingBox(layer_coord_list);
+   int32_t grid_num = static_cast<int32_t>(std::sqrt(max_candidate_point_num));
+-  double grid_x_span = bounding_box.getXSpan() / grid_num;
+-  double grid_y_span = bounding_box.getYSpan() / grid_num;
++  double grid_x_span = std::max(1, bounding_box.getXSpan() / grid_num);
++  double grid_y_span = std::max(1, bounding_box.getYSpan() / grid_num);
+ 
+   std::set<PlanarCoord, CmpPlanarCoordByXASC> visited_set;
+   std::vector<LayerCoord> new_layer_coord_list;
+@@ -1006,6 +1040,12 @@
+           if (!RTUTIL.isInside(box_rect.get_real_rect(), coord.get_planar_coord())) {
+             continue;
+           }
++          if (useDefTracks() && onPreferredTrack(coord)
++              && std::any_of(access_point_set.begin(), access_point_set.end(),
++                   [&coord](AccessPoint* point) { return point->getRealLayerCoord() == coord; })) {
++            pa_group_list.back().get_coord_list().push_back(coord);
++            continue;
++          }
+           bool within_shape = false;
+           if (!within_shape) {
+             for (PlanarRect& obs_rect : routing_obs_rect_map[coord.get_layer_idx()]) {
+@@ -1570,6 +1610,21 @@
+   initSingleRouteTask(pa_box, pa_task);
+   while (!isConnectedAllEnd(pa_box)) {
+     routeSinglePath(pa_box);
++    if (useDefTracks() && (pa_box.get_path_head_node() == nullptr || pa_box.get_end_node_list_idx() < 0)) {
++      std::ostringstream detail;
++      for (auto& group : pa_task->get_pa_group_list()) {
++        detail << (group.get_is_target() ? " targets=" : " sources=") << group.get_coord_list().size() << " [";
++        size_t shown=0;
++        for (const auto& c : group.get_coord_list()) {
++          if (shown++ >= 12) break;
++          detail << "(" << c.get_x() << "," << c.get_y() << "," << c.get_layer_idx() << ")";
++        }
++        detail << "]";
++      }
++      RTLOG.error(Loc::current(), "No legal PA path for net=", RTDM.getDatabase().get_net_list().at(pa_task->get_net_idx()).get_net_name(),
++                  " pin=", pa_task->get_pa_pin()->get_pin_name(), " box=", pa_box.get_pa_box_id().get_x(), ",", pa_box.get_pa_box_id().get_y(),
++                  detail.str());
++    }
+     updatePathResult(pa_box);
+     resetStartAndEnd(pa_box);
+     resetSinglePath(pa_box);

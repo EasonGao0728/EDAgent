@@ -29,7 +29,7 @@ Open [the local workbench](http://127.0.0.1:4173/). In the model connection dial
 
 ### 2. Connect the Linux worker
 
-If your lab already operates a compatible worker, obtain its SSH hostname and provisioned account from the operator. Configure the `eda-worker` SSH alias, verify key-based login, then set the worker account UID and enable the matching `environments/remote-server.json` profile on both hosts. The public profile expects `/srv/edagent/main-agent-remote-v1` as its remote project root. A fresh clone starts with remote execution disabled.
+If your lab operates a compatible worker, use the operator-provided SSH alias and profile. Set `EDAGENT_REMOTE_PROFILE` to the absolute path of the private JSON file before starting the workbench. The bundled example uses `eda-worker` and `/srv/edagent/main-agent-remote-v1`. A fresh clone starts with remote execution disabled.
 
 For a new worker, the operator must also provision the pinned native tools, case files and process libraries. The [deployment guide](docs/DEPLOYMENT.md) lists the expected paths, required inputs and connection checks. Once connected, the workbench should show the worker **online** and your chosen case **available**.
 
@@ -43,6 +43,8 @@ For a new worker, the operator must also provision the pinned native tools, case
 For your own files, **Custom case input** shows the required uploads. Prepare the mapped Verilog, technology LEF, standard-cell and macro LEFs, matching Liberty files, SDC and the design metadata required by the selected profile. Full physical execution currently requires a registered input package. The [case matrix](docs/CASE_MATRIX.md) tracks the 50 development designs individually. Five have full-backend workbench profiles.
 
 ## Agent architecture
+
+The workbench supports FIFO admission for shared workers, durable routing progress and compact previews for large layouts. The [bp_multi research implementation](research/bp_multi/README.md) contains the router changes, checkpoint recovery and local short-repair workflow for a qualified 26-macro experiment.
 
 ![EDAgent target architecture with a main placement agent, a dispatcher, a reusable tool library, and an algorithm agent that builds and tests tools](docs/images/agent-architecture.png)
 

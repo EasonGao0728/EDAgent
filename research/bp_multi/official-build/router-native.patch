@@ -1,0 +1,359 @@
+--- a/src/operation/iRT/interface/RTInterface.cpp
++++ b/src/operation/iRT/interface/RTInterface.cpp
+@@ -40,7 +40,22 @@
+ #include "idm.h"
+ #include "tool_api/ista_io/ista_io.h"
+ 
++#include <cstdlib>
++#include <string>
++#include <limits>
++
+ namespace irt {
++namespace {
++bool useDefTracks()
++{
++  static const bool enabled = [] {
++    const char* value = std::getenv("IEDA_RT_PORT_NATIVE");
++    return value && std::string(value) == "1";
++  }();
++  return enabled;
++}
++}  // namespace
++
+ 
+ // public
+ 
+@@ -499,6 +514,38 @@
+ void RTInterface::wrapTrackAxis(RoutingLayer& routing_layer, idb::IdbLayerRouting* idb_layer)
+ {
+   ScaleAxis& track_axis = routing_layer.get_track_axis();
++
++  if (useDefTracks()) {
++    for (idb::IdbTrackGrid* source : idb_layer->get_track_grid_list()) {
++      if (!source || !source->get_track() || !source->get_track_num()) {
++        RTLOG.error(Loc::current(), "Incomplete DEF TRACKS for ", idb_layer->get_name());
++      }
++      auto* track = source->get_track();
++      const uint64_t count = source->get_track_num();
++      const uint64_t start = track->get_start(), pitch = track->get_pitch();
++      const uint64_t last = start + (count - 1) * pitch;
++      if (!pitch || last > std::numeric_limits<int32_t>::max() || count > std::numeric_limits<int32_t>::max()) {
++        RTLOG.error(Loc::current(), "Invalid DEF TRACKS range for ", idb_layer->get_name());
++      }
++      const bool x = track->get_direction() == idb::IdbTrackDirection::kDirectionX;
++      if (!x && track->get_direction() != idb::IdbTrackDirection::kDirectionY) {
++        RTLOG.error(Loc::current(), "Invalid DEF TRACKS direction for ", idb_layer->get_name());
++      }
++      ScaleGrid grid;
++      grid.set_start_line(start);
++      grid.set_step_length(pitch);
++      grid.set_step_num(count - 1);
++      grid.set_end_line(last);
++      (x ? track_axis.get_x_grid_list() : track_axis.get_y_grid_list()).push_back(grid);
++      RTLOG.info(Loc::current(), "EDA_DEF_TRACK layer=", idb_layer->get_name(), " axis=", (x ? "X" : "Y"),
++                 " start=", start, " count=", count, " pitch=", pitch);
++    }
++    for (auto* grids : {&track_axis.get_x_grid_list(), &track_axis.get_y_grid_list()}) {
++      if (grids->empty()) RTLOG.error(Loc::current(), "Missing DEF TRACKS axis for ", idb_layer->get_name());
++      std::sort(grids->begin(), grids->end(), CmpScaleGridASC());
++    }
++    return;
++  }
+ 
+   ScaleGrid x_track_grid;
+   x_track_grid.set_start_line(idb_layer->get_offset_x());
+@@ -1142,6 +1189,8 @@
+ 
+ void RTInterface::outputTrackGrid()
+ {
++  // Imported DEF records remain authoritative, including multi-layer TRACKS declarations.
++  if (useDefTracks()) return;
+   idb::IdbLayers* idb_layer_list = dmInst->get_idb_def_service()->get_layout()->get_layers();
+   idb::IdbTrackGridList* idb_track_grid_list = dmInst->get_idb_def_service()->get_layout()->get_track_grid_list();
+   std::vector<RoutingLayer>& routing_layer_list = RTDM.getDatabase().get_routing_layer_list();
+--- a/src/operation/iRT/source/data_manager/DataManager.cpp
++++ b/src/operation/iRT/source/data_manager/DataManager.cpp
+@@ -21,7 +21,21 @@
+ #include "RTInterface.hpp"
+ #include "Utility.hpp"
+ 
++#include <cstdlib>
++#include <string>
++
+ namespace irt {
++namespace {
++bool useDefTracks()
++{
++  static const bool enabled = [] {
++    const char* value = std::getenv("IEDA_RT_PORT_NATIVE");
++    return value && std::string(value) == "1";
++  }();
++  return enabled;
++}
++}  // namespace
++
+ 
+ // public
+ 
+@@ -610,6 +624,7 @@
+ {
+   std::vector<RoutingLayer>& routing_layer_list = _database.get_routing_layer_list();
+ 
++  if (useDefTracks()) return routing_layer_list.front().getXTrackGridList().front().get_start_line();
+   std::vector<int32_t> offset_list;
+   for (RoutingLayer& routing_layer : routing_layer_list) {
+     for (ScaleGrid& x_grid : routing_layer.get_track_axis().get_x_grid_list()) {
+@@ -631,6 +646,7 @@
+ {
+   std::vector<RoutingLayer>& routing_layer_list = _database.get_routing_layer_list();
+ 
++  if (useDefTracks()) return routing_layer_list.front().getXTrackGridList().front().get_step_length();
+   std::vector<int32_t> pitch_list;
+   for (RoutingLayer& routing_layer : routing_layer_list) {
+     for (ScaleGrid& x_grid : routing_layer.get_track_axis().get_x_grid_list()) {
+@@ -774,6 +790,7 @@
+ 
+ void DataManager::makeRoutingLayerList()
+ {
++  if (useDefTracks()) return;  // wrapTrackAxis populated the actual DEF axes.
+   Die& die = _database.get_die();
+   std::vector<RoutingLayer>& routing_layer_list = _database.get_routing_layer_list();
+ 
+@@ -990,6 +1007,11 @@
+   Row& row = _database.get_row();
+   int32_t row_height = row.get_height();
+   int32_t only_offset = getOnlyOffset();
++  if (useDefTracks()) {
++    auto& layer = _database.get_routing_layer_list().front();
++    auto& axis = direction == Direction::kVertical ? layer.getXTrackGridList() : layer.getYTrackGridList();
++    only_offset = axis.front().get_start_line();
++  }
+   int32_t only_pitch = getOnlyPitch();
+ 
+   int32_t die_start_scale = (direction == Direction::kVertical ? die.get_real_ll_x() : die.get_real_ll_y());
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -28,7 +28,121 @@
+ #include "PinAccessor.hpp"
+ #include "RTInterface.hpp"
+ 
++#include <cstdlib>
++#include <string>
++#include <fstream>
++#include <thread>
++#include <chrono>
++
+ namespace irt {
++namespace {
++bool useDefTracks()
++{
++  static const bool enabled = [] {
++    const char* value = std::getenv("IEDA_RT_PORT_NATIVE");
++    return value && std::string(value) == "1";
++  }();
++  return enabled;
++}
++}  // namespace
++
++
++
++namespace {
++bool lazyTargets()
++{
++  static const bool enabled = [] {
++    const char* value = std::getenv("IEDA_RT_PA_LAZY_TARGETS");
++    return useDefTracks() && value && std::string(value) == "1";
++  }();
++  return enabled;
++}
++
++std::vector<LayerCoord> nativeTargets(PAPin* pin)
++{
++  auto& layers = RTDM.getDatabase().get_routing_layer_list();
++  int32_t bottom = RTDM.getConfig().bottom_routing_layer_idx;
++  int32_t top = RTDM.getConfig().top_routing_layer_idx;
++  std::vector<LayerCoord> result;
++  for (auto& access : pin->get_access_point_list()) {
++    auto current = access.get_layer_idx();
++    int32_t target = std::clamp(current, bottom, top);
++    if (pin->get_is_core()) {
++      target = current >= top ? std::max(bottom, top - 1) : std::min(top, std::max(bottom, current) + 1);
++    }
++    auto& layer = layers.at(target);
++    int32_t reach = RTDM.getDatabase().get_detection_distance();
++    for (auto* axis : {&layer.getXTrackGridList(), &layer.getYTrackGridList()}) {
++      for (const auto& grid : *axis) reach = std::max(reach, grid.get_step_length() + layer.get_min_width());
++    }
++    auto rect = RTUTIL.getEnlargedRect(access.get_real_coord(), reach);
++    auto xs = RTUTIL.getScaleList(rect.get_ll_x(), rect.get_ur_x(), layer.getXTrackGridList());
++    auto ys = RTUTIL.getScaleList(rect.get_ll_y(), rect.get_ur_y(), layer.getYTrackGridList());
++    for (int32_t x : xs) for (int32_t y : ys) result.emplace_back(x, y, target);
++  }
++  std::sort(result.begin(), result.end(), CmpLayerCoordByXASC());
++  result.erase(std::unique(result.begin(), result.end()), result.end());
++  return result;
++}
++
++const std::vector<LayerCoord>& readTargets(PAPin* pin, std::vector<LayerCoord>& scratch)
++{
++  if (!lazyTargets()) return pin->get_target_coord_list();
++  scratch = nativeTargets(pin);
++  return scratch;
++}
++
++void writePAEvidence(PAModel& model)
++{
++  if (!useDefTracks()) return;
++  const char* witness = std::getenv("IEDA_RT_PA_WITNESS");
++  std::ofstream out;
++  if (witness) {
++    out.open(witness);
++    if (!out) RTLOG.error(Loc::current(), "Unable to open PA witness");
++    out << "net_idx\tnet\tpin_idx\tpin\tlayer\tx\ty\n";
++  }
++  size_t expected = 0, resolved = 0;
++  auto& layers = RTDM.getDatabase().get_routing_layer_list();
++  for (auto& net : model.get_pa_net_list()) {
++    auto* original = net.get_origin_net();
++    expected += original->get_pin_list().size();
++    std::set<int32_t> seen;
++    for (auto& pin : net.get_pa_pin_list()) {
++      auto& ap = pin.get_access_point();
++      int32_t level = ap.get_layer_idx();
++      bool inside = false;
++      for (auto& shape : pin.get_routing_shape_list()) {
++        if (shape.get_layer_idx() == level && RTUTIL.isInside(shape.get_real_rect(), ap.get_real_coord())) {
++          inside = true;
++          break;
++        }
++      }
++      if (level < 0 || level >= static_cast<int32_t>(layers.size()) || !inside || !seen.insert(pin.get_pin_idx()).second) {
++        RTLOG.error(Loc::current(), "Invalid PA net=", original->get_net_name(), " pin=", pin.get_pin_name());
++      }
++      if (witness) out << net.get_net_idx() << '\t' << original->get_net_name() << '\t' << pin.get_pin_idx() << '\t'
++                       << pin.get_pin_name() << '\t' << layers[level].get_layer_name() << '\t'
++                       << ap.get_real_coord().get_x() << '\t' << ap.get_real_coord().get_y() << '\n';
++      ++resolved;
++    }
++  }
++  if (witness) { out.close(); if (!out) RTLOG.error(Loc::current(), "Incomplete PA witness"); }
++  if (!expected || expected != resolved) RTLOG.error(Loc::current(), "Incomplete PA coverage");
++  RTLOG.info(Loc::current(), "EDA_PA_COVERAGE expected=", expected, " resolved=", resolved);
++  if (const char* gate = std::getenv("IEDA_RT_PA_GATE")) {
++    const std::string ready = std::string(gate) + ".ready", accept = std::string(gate) + ".accept";
++    if (std::ifstream(accept).good() || std::ifstream(ready).good()) RTLOG.error(Loc::current(), "Stale PA gate");
++    std::ofstream marker(ready); marker << resolved << '\n'; marker.close();
++    if (!marker) RTLOG.error(Loc::current(), "Could not publish PA gate");
++    for (int i=0; i<600; ++i) {
++      if (std::ifstream(accept).good()) return;
++      std::this_thread::sleep_for(std::chrono::milliseconds(100));
++    }
++    RTLOG.error(Loc::current(), "Independent PA acceptance timed out");
++  }
++}
++}  // namespace
+ 
+ // public
+ 
+@@ -67,6 +181,7 @@
+   uploadAccessPointList(pa_model);
+   // debugPlotPAModel(pa_model, "init");
+   routePAModel(pa_model);
++  writePAEvidence(pa_model);
+   uploadAccessPoint(pa_model);
+   uploadAccessResult(pa_model);
+   uploadAccessPatch(pa_model);
+@@ -151,6 +266,12 @@
+     }
+     for (AccessPoint& access_point : pa_pin->get_access_point_list()) {
+       pa_pin->get_pin_shape_coord_list().push_back(access_point.getRealLayerCoord());
++    }
++    if (useDefTracks()) {
++      auto targets = nativeTargets(pa_pin);
++      if (targets.empty()) RTLOG.error(Loc::current(), "No native PA targets for ", pa_pin->get_pin_name());
++      if (!lazyTargets()) pa_pin->get_target_coord_list() = std::move(targets);
++      continue;
+     }
+     std::set<LayerCoord, CmpLayerCoordByXASC> coord_set;
+     for (AccessPoint& access_point : pa_pin->get_access_point_list()) {
+@@ -837,7 +958,9 @@
+           pa_group_list.front().get_coord_list().push_back(access_point->getRealLayerCoord());
+         }
+         pa_group_list.back().set_is_target(true);
+-        for (const LayerCoord& coord : pa_pin->get_target_coord_list()) {
++        std::vector<LayerCoord> target_scratch;
++        const auto& targets = readTargets(pa_pin, target_scratch);
++        for (const LayerCoord& coord : targets) {
+           if (!RTUTIL.isInside(box_rect.get_real_rect(), coord.get_planar_coord())) {
+             continue;
+           }
+@@ -863,7 +986,7 @@
+           }
+         }
+         if (pa_group_list.back().get_coord_list().empty()) {
+-          for (const LayerCoord& coord : pa_pin->get_target_coord_list()) {
++          for (const LayerCoord& coord : targets) {
+             if (!RTUTIL.isInside(box_rect.get_real_rect(), coord.get_planar_coord())) {
+               continue;
+             }
+@@ -2348,7 +2471,6 @@
+ {
+   for (PATask* pa_task : pa_box.get_pa_task_list()) {
+     std::vector<LayerCoord>& pin_shape_coord_list = pa_task->get_pa_pin()->get_pin_shape_coord_list();
+-    std::vector<LayerCoord>& target_coord_list = pa_task->get_pa_pin()->get_target_coord_list();
+     std::vector<LayerCoord> segment_coord_list;
+     for (Segment<LayerCoord>& segment : pa_box.get_net_task_access_result_map()[pa_task->get_net_idx()][pa_task->get_task_idx()]) {
+       segment_coord_list.push_back(segment.get_first());
+@@ -2356,7 +2478,8 @@
+     }
+     AccessPoint access_point;
+     if (segment_coord_list.empty()) {
+-      access_point = AccessPoint(pa_task->get_pa_pin()->get_pin_idx(), RTUTIL.getFirstEqualCoord(pin_shape_coord_list, target_coord_list));
++      std::vector<LayerCoord> target_scratch;
++      access_point = AccessPoint(pa_task->get_pa_pin()->get_pin_idx(), RTUTIL.getFirstEqualCoord(pin_shape_coord_list, readTargets(pa_task->get_pa_pin(), target_scratch)));
+     } else {
+       access_point = AccessPoint(pa_task->get_pa_pin()->get_pin_idx(), RTUTIL.getFirstEqualCoord(pin_shape_coord_list, segment_coord_list));
+     }
+--- a/src/operation/iRT/source/module/topology_generator/TopologyGenerator.cpp
++++ b/src/operation/iRT/source/module/topology_generator/TopologyGenerator.cpp
+@@ -21,7 +21,21 @@
+ #include "TGCandidate.hpp"
+ #include "Utility.hpp"
+ 
++#include <cstdlib>
++#include <string>
++
+ namespace irt {
++namespace {
++bool useDefTracks()
++{
++  static const bool enabled = [] {
++    const char* value = std::getenv("IEDA_RT_PORT_NATIVE");
++    return value && std::string(value) == "1";
++  }();
++  return enabled;
++}
++}  // namespace
++
+ 
+ // public
+ 
+@@ -314,6 +328,18 @@
+     PlanarCoord& second_coord = planar_topo.get_second();
+     int32_t span_x = std::abs(first_coord.get_x() - second_coord.get_x());
+     int32_t span_y = std::abs(first_coord.get_y() - second_coord.get_y());
++    if (useDefTracks() && span_x && span_y) {
++      constexpr int32_t max_span = 12;
++      const int32_t count = (std::max(span_x, span_y) + max_span - 1) / max_span;
++      PlanarCoord previous = first_coord;
++      for (int32_t i = 1; i <= count; ++i) {
++        PlanarCoord next(first_coord.get_x() + int64_t(second_coord.get_x() - first_coord.get_x()) * i / count,
++                         first_coord.get_y() + int64_t(second_coord.get_y() - first_coord.get_y()) * i / count);
++        planar_topo_list.emplace_back(previous, next);
++        previous = next;
++      }
++      continue;
++    }
+     if (span_x > 1 && span_y > 1 && (span_x > topo_spilt_length || span_y > topo_spilt_length)) {
+       int32_t stick_num_x;
+       if (span_x % topo_spilt_length == 0) {

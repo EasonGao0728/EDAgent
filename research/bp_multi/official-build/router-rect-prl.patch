@@ -1,0 +1,50 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -67,6 +67,37 @@
+ }
+ 
+ 
++// A short via pad facing a wide macro obstruction can have a very short
++// parallel run. Match the width/PRL indices and threshold inclusivity used
++// by iDRC ParallelRunLengthSpacingRule for a qualified PRL-only technology.
++int32_t viaPairSpacing(RoutingLayer& layer, const PlanarRect& a, const PlanarRect& b)
++{
++  static const bool qualified_deck = [] {
++    const char* value = std::getenv("IEDA_RT_PA_RECT_PRL");
++    return value && std::string(value) == "1";
++  }();
++  const int32_t eol_bound = std::max({layer.get_eol_spacing(), layer.get_eol_within(), layer.get_eol_ete(), 0});
++  if (!qualified_deck || layer.get_layer_name() != "metal2" || eol_bound) {
++    return std::max({layer.getPRLSpacing(a), layer.getPRLSpacing(b), eol_bound});
++  }
++  auto& table = layer.get_prl_spacing_table();
++  const auto& widths = table.get_width_list();
++  const auto& lengths = table.get_parallel_length_list();
++  auto& spacings = table.get_width_parallel_length_map();
++  if (widths.empty() || lengths.empty() || widths.front() != 0 || lengths.front() != 0
++      || static_cast<size_t>(spacings.get_x_size()) != widths.size()
++      || static_cast<size_t>(spacings.get_y_size()) != lengths.size()
++      || !std::is_sorted(widths.begin(),widths.end()) || !std::is_sorted(lengths.begin(),lengths.end()))
++    return -1;
++  const int32_t overlap_x = std::min(a.get_ur_x(), b.get_ur_x()) - std::max(a.get_ll_x(), b.get_ll_x());
++  const int32_t overlap_y = std::min(a.get_ur_y(), b.get_ur_y()) - std::max(a.get_ll_y(), b.get_ll_y());
++  const int32_t run = std::max({0, overlap_x, overlap_y});
++  const int32_t width = std::max(a.getWidth(), b.getWidth());
++  const auto row = std::upper_bound(widths.begin(), widths.end(), width) - widths.begin() - 1;
++  const auto col = std::upper_bound(lengths.begin(), lengths.end(), run) - lengths.begin() - 1;
++  return spacings[row][col];
++}
++
+ // Some standard-cell ports have just enough metal for the default via.
+ // Their admissible centers form a line or a point; polygon-area operations
+ // can discard these. Check the actual emitted via against original geometry.
+@@ -86,7 +117,8 @@
+         int32_t spacing;
+         if (metal.get_is_routing()) {
+           auto& layer = db.get_routing_layer_list()[metal.get_layer_idx()];
+-          spacing = std::max({layer.getPRLSpacing(metal), layer.getPRLSpacing(obstacle->get_real_rect()), layer.get_eol_spacing(), 0});
++          spacing = viaPairSpacing(layer, metal, obstacle->get_real_rect());
++          if (spacing <= 0) return false;
+         } else {
+           auto& layer = db.get_cut_layer_list()[metal.get_layer_idx()];
+           spacing = std::max({layer.get_curr_spacing(), layer.get_curr_prl_spacing(), layer.get_curr_eol_spacing(), 0});

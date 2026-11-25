@@ -1,0 +1,22 @@
+--- a/src/operation/iRT/source/toolkit/logger/Logger.hpp
++++ b/src/operation/iRT/source/toolkit/logger/Logger.hpp
+@@ -16,6 +16,9 @@
+ // ***************************************************************************************
+ #pragma once
+ 
++#include <cstdlib>
++#include <cstring>
++
+ #include <thread>
+ 
+ #include "LogLevel.hpp"
+@@ -72,7 +75,8 @@
+   {
+     printLog(LogLevel::kError, location, value, args...);
+     closeLogFileStream();
+-    exit(0);
++    const char* mode = std::getenv("IEDA_RT_PORT_NATIVE");
++    std::exit(mode && std::strcmp(mode, "1") == 0 ? EXIT_FAILURE : EXIT_SUCCESS);
+   }
+ 
+  private:

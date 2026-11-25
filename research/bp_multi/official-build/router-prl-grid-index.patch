@@ -1,0 +1,11 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -95,7 +95,7 @@
+   const int32_t width = std::max(a.getWidth(), b.getWidth());
+   const auto row = std::upper_bound(widths.begin(), widths.end(), width) - widths.begin() - 1;
+   const auto col = std::upper_bound(lengths.begin(), lengths.end(), run) - lengths.begin() - 1;
+-  return spacings[row][col];
++  return spacings[static_cast<int32_t>(row)][static_cast<int32_t>(col)];
+ }
+ 
+ // Some standard-cell ports have just enough metal for the default via.

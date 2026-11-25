@@ -22,7 +22,10 @@ export function bridge(request, signal){
     signal?.addEventListener('abort',cancel,{once:true});
     // Remote requests only submit/query durable jobs. Aborting SSH does not
     // cancel server computation; cancellation requires the scoped job API.
-    const timer=setTimeout(cancel,remote?(request.operation==='download'?660000:150000):210000);
+    // The bp_multi artifact client applies the accepted transfer budget after
+    // reading the server manifest. A short status-call timer can kill it mid-file.
+    const qualificationDelivery=remote&&((request.operation==='bp_multi_route'&&request.action==='delivery')||(request.operation==='bp_multi_quality'&&request.action==='status'));
+    const timer=qualificationDelivery?undefined:setTimeout(cancel,remote?(request.operation==='download'?660000:150000):210000);
     child.stdout.on('data',d=>{out+=d;if(out.length>4000000)cancel();});
     child.stderr.on('data',d=>{err=(err+d).slice(-1000);});
     child.on('error',reject);

@@ -13,7 +13,7 @@ export const taskToolNames=['mp_task_start','mp_task_observe','mp_task_resume','
 taskToolNames.push('mp_feedback_begin','mp_feedback_status','mp_feedback_inspect','mp_feedback_branch','mp_feedback_continue','mp_feedback_compare','mp_feedback_report','mp_feedback_stop');
 taskToolNames.push('mp_local_inspect','mp_local_plan','mp_local_execute','mp_local_status');
 taskToolNames.push('mp_quality_inspect','mp_quality_execute');
-taskToolNames.push('mp_tools_search','mp_tools_load','mp_agent_subgoal','mp_agent_reflect');
+taskToolNames.push('mp_tools_search','mp_tools_load','mp_agent_subgoal','mp_agent_reflect','mp_bp_multi_route','mp_bp_multi_quality');
 export function taskRun(agent){
   const id=agent?.session?.id;
   if(!id)throw Error('DSH session identity missing');
@@ -44,6 +44,10 @@ export function registerTaskTools(ctx){
     return value;
   }});
   const output={schema:{type:'json'},render:(_a,v)=>[{type:'text',text:JSON.stringify(v)}]};
+  register(defineTool({name:'mp_bp_multi_quality',description:'对已交付的 bp_multi 在服务器诊断金属短路、生成单网局部候选、独立复验。repair 必须绑定 diagnose 返回的 proposal_id。status 查询同一作业及接受或回退证据。',parameters:{action:{type:'string',enum:['diagnose','repair','status'],required:true},proposal_id:{type:'string'}},output,
+    execute:(args,exec)=>bridge({mode:'task',operation:'bp_multi_quality',run:taskRun(exec.agent),...args},exec.signal)}));
+  register(defineTool({name:'mp_bp_multi_route',description:'查询、续接或交付 bp_multi 的服务器路由资格作业。status 返回当前尝试与可用检查点。start 接回活动作业；中断后根据服务器返回的 resume_available 从已核验的检查点恢复，保留上游凭据。首次启动使用冻结的合法化 DEF。delivery 核验并下载最终产物。',parameters:{action:{type:'string',enum:['status','start','delivery'],required:true}},output,
+    execute:(args,exec)=>bridge({mode:'task',operation:'bp_multi_route',run:taskRun(exec.agent),action:args.action},exec.signal)}));
   register(defineTool({name:'mp_tools_search',description:'检索工具库；stage只能使用所列枚举，不确定时省略。按阶段过滤、embedding/关键词召回少量候选，自动加载候选定义到下一轮。相似度不是成功率，调用前仍须核对当前任务资格；没有工具时报告缺口，不启动Tool Maker。',parameters:{query:{type:'string',required:true},stage:{type:'string',enum:catalog().stages},top_k:{type:'number'}},output,async execute(args,exec){
     const result=await searchTools(args.query,{stage:args.stage,topK:args.top_k??5});
     if(result.candidates.length)result.loaded=await loadTools(taskRun(exec.agent),result.candidates.map(c=>c.id),'retrieval: '+args.query);

@@ -14,6 +14,10 @@ jobs:
         with:
           node-version: '24'
       - run: python examples/placement_metrics.py
+      - run: python -m unittest discover -s tests -p test_fifo_service.py -v
+      - run: python -m unittest discover -s tests -p test_qualification_transport.py -v
+      - run: python -m unittest discover -s tests -p test_placement_preview.py -v
+      - run: python -m compileall -q research/bp_multi
       - run: python -m unittest discover -s tests -p test_core.py -v
       - run: python -m unittest discover -s tests -p test_catalog_qualification.py -v
       - run: python -m unittest discover -s tests -p test_case_admission_budget.py -v

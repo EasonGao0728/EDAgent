@@ -1,0 +1,165 @@
+--- a/src/operation/iRT/interface/RTInterface.cpp
++++ b/src/operation/iRT/interface/RTInterface.cpp
+@@ -270,6 +270,11 @@
+ }
+ }  // namespace
+ 
++void saveDetailedBatch(size_t count)
++{
++  const char* file=std::getenv("IEDA_RT_SAVE_DR_BATCH");
++  if (file) transferRouteState(file,false,("D4_"+std::to_string(count)).c_str());
++}
+ 
+ // public
+ 
+@@ -349,9 +354,14 @@
+ 
+   const char* input = std::getenv("IEDA_RT_RESTORE_STATE");
+   const char* level = std::getenv("IEDA_RT_RESTORE_LEVEL");
+-  const std::string resume=level?level:"";
++  const std::string encoded=level?level:"";
++  const bool batch=encoded.rfind("D4_",0)==0;
++  if(batch && (!input || encoded.size()<4 || encoded.size()>10 ||
++     encoded.find_first_not_of("0123456789",3)!=std::string::npos || encoded[3]=='0'))
++    throw std::runtime_error("invalid DR batch cursor");
++  const std::string resume=batch?"TA":encoded;
+   if(input && resume!="TG" && resume!="LA" && resume!="SR" && resume!="TA") throw std::runtime_error("invalid resume stage");
+-  if(input) transferRouteState(input,true,resume.c_str());
++  if(input) transferRouteState(input,true,encoded.c_str());
+   else {
+   PinAccessor::initInst();
+   RTPA.access();
+--- a/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
++++ b/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
+@@ -32,8 +32,41 @@
+ #include <string>
+ 
+ namespace irt {
+-
++void saveDetailedBatch(size_t count);
+ namespace {
++size_t drBatchCursor() {
++  const char* level=std::getenv("IEDA_RT_RESTORE_LEVEL");
++  return level && std::string(level).rfind("D4_",0)==0 ? std::stoul(level+3) : 0;
++}
++bool useFourCellBoxes() {
++  const char* setting=std::getenv("IEDA_RT_DR_WINDOW");
++  if(!setting)return false;
++  if(std::string(setting)!="4")throw std::runtime_error("unsupported DR window");
++  return true;
++}
++// The split at a partition edge can divide a preserved lead. Check exact
++// same-layer, collinear metal coverage of the full interval, including both ends.
++template<class Segments>
++bool coversLead(const Segments& wires,const LayerCoord& p,const LayerCoord& q) {
++  const bool h=p.get_y()==q.get_y();
++  if(p.get_layer_idx()!=q.get_layer_idx() || (h==(p.get_x()==q.get_x())))return false;
++  auto axis=[&](const LayerCoord& c){return h?c.get_x():c.get_y();};
++  auto cross=[&](const LayerCoord& c){return h?c.get_y():c.get_x();};
++  const int lo=std::min(axis(p),axis(q)),hi=std::max(axis(p),axis(q));
++  std::vector<std::pair<int,int>> spans;
++  for(auto s:wires) {
++    auto& a=s->get_first();auto& b=s->get_second();
++    if(a.get_layer_idx()!=p.get_layer_idx() || b.get_layer_idx()!=p.get_layer_idx() ||
++       cross(a)!=cross(p) || cross(b)!=cross(p))continue;
++    int l=std::max(lo,std::min(axis(a),axis(b))),r=std::min(hi,std::max(axis(a),axis(b)));
++    if(l<r)spans.emplace_back(l,r);
++  }
++  std::sort(spans.begin(),spans.end());
++  int covered=lo;
++  for(auto [l,r]:spans){if(l>covered)break;covered=std::max(covered,r);}
++  return covered==hi;
++}
++
+ // Preserve the physical pin-to-track conductors already measured by PA.
+ struct DRAccessLead {
+   int pin, layer, x, y, a, b;
+@@ -76,7 +109,7 @@
+           auto& first=s->get_first();auto& second=s->get_second();
+           if((first==u && second==v) || (first==v && second==u)) return true;
+         }
+-        return false;
++        return drBatchCursor() && coversLead(segments.at(ni),u,v);
+       };
+       if(!contains(p,corner) || !contains(corner,anchor))
+         throw std::runtime_error("missing physical pin-to-track lead before DR: "+terminal);
+@@ -96,7 +129,7 @@
+           throw std::runtime_error("boundary lead changed at DR: "+net);
+         auto& segs=segments.at(ni);
+         if(!std::any_of(segs.begin(),segs.end(),[&](auto s){return
+-          (s->get_first()==p && s->get_second()==q) || (s->get_second()==p && s->get_first()==q);}))
++          (s->get_first()==p && s->get_second()==q) || (s->get_second()==p && s->get_first()==q);}) && !(drBatchCursor() && coversLead(segs,p,q)))
+           throw std::runtime_error("missing physical boundary connection at DR: "+net);
+         result[ni].push_back({pin->get_pin_idx(),l,x,y,a,b});
+       }
+@@ -214,6 +247,8 @@
+   dr_iter_param_list.emplace_back(prefer_wire_unit, non_prefer_wire_unit, bend_unit, via_unit, 12, 8, 3, fixed_rect_unit, routed_rect_unit, violation_unit, 3, 10);
+   // clang-format on
+   dr_iter_param_list.resize(1);
++  if(useFourCellBoxes()) dr_iter_param_list.front().set_size(4);
++  else if(drBatchCursor()) throw std::runtime_error("DR checkpoint requires matching 4-cell partition");
+   initRoutingState(dr_model);
+   for (int32_t i = 0, iter = 1; i < static_cast<int32_t>(dr_iter_param_list.size()); i++, iter++) {
+     Monitor iter_monitor;
+@@ -224,7 +259,7 @@
+     initDRBoxMap(dr_model);
+     resetRoutingState(dr_model);
+     buildBoxSchedule(dr_model);
+-    splitNetResult(dr_model);
++    if(!drBatchCursor())splitNetResult(dr_model);
+     // debugPlotDRModel(dr_model, "middle");
+     routeDRBoxMap(dr_model);
+     uploadNetResult(dr_model);
+@@ -456,12 +491,27 @@
+     total_box_num += dr_box_id_list.size();
+   }
+ 
+-  size_t routed_box_num = 0;
+-  std::atomic<size_t> completed{0};
+-  for (std::vector<DRBoxId>& dr_box_id_list : dr_model.get_dr_box_id_list_list()) {
+-    Monitor stage_monitor;
+-#pragma omp parallel for
+-    for (DRBoxId& dr_box_id : dr_box_id_list) {
++  const size_t cursor=drBatchCursor();
++  if(cursor>total_box_num)throw std::runtime_error("DR cursor exceeds schedule");
++  std::atomic<size_t> completed{cursor};
++  size_t visited=0;
++  // Every chunk ends at a barrier. Only the owning thread serializes global
++  // state, after all workers' selected routes were uploaded to the database.
++  auto last_save=std::chrono::steady_clock::now();
++  for (auto& group : dr_model.get_dr_box_id_list_list()) {
++    size_t chunk=useFourCellBoxes()?256:group.size();
++    for(size_t first=0;first<group.size();first+=chunk) {
++      const size_t end=std::min(group.size(),first+chunk);
++      const size_t next=visited+(end-first);
++      if(visited<cursor) {
++        if(next>cursor)throw std::runtime_error("DR cursor is not a committed chunk");
++        visited=next;
++        continue;
++      }
++      Monitor stage_monitor;
++#pragma omp parallel for schedule(dynamic,1)
++      for (size_t j=first;j<end;++j) {
++      auto& dr_box_id=group[j];
+       auto& spec=dr_box_map[dr_box_id.get_x()][dr_box_id.get_y()];
+       DRBox dr_box;
+       dr_box.set_box_rect(spec.get_box_rect());
+@@ -492,9 +542,15 @@
+       const auto n=++completed;
+       if(n%64==0)RTLOG.info(Loc::current(),"DR boxes committed ",n,"/",total_box_num);
+     }
+-    routed_box_num += dr_box_id_list.size();
+-    RTLOG.info(Loc::current(), "Routed ", routed_box_num, "/", total_box_num, "(", RTUTIL.getPercentage(routed_box_num, total_box_num), ") boxes with ",
+-               getRouteViolationNum(dr_model), " violations", stage_monitor.getStatsInfo());
++      visited=next;
++      if(completed.load()!=visited)throw std::runtime_error("DR chunk commit mismatch");
++      const auto now=std::chrono::steady_clock::now();
++      if(useFourCellBoxes() && (now-last_save>=std::chrono::minutes(3) || visited==total_box_num)) {
++        saveDetailedBatch(visited);
++        last_save=std::chrono::steady_clock::now();
++      }
++    }
++    RTLOG.info(Loc::current(),"Routed ",visited,"/",total_box_num,"(",RTUTIL.getPercentage(visited,total_box_num),") boxes");
+   }
+ 
+   RTLOG.info(Loc::current(), "Completed", monitor.getStatsInfo());

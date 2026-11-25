@@ -1,0 +1,85 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -58,6 +58,13 @@
+   return enabled;
+ }
+ 
++bool onPreferredTrack(const LayerCoord& point)
++{
++  auto& layer = RTDM.getDatabase().get_routing_layer_list().at(point.get_layer_idx());
++  const auto line = layer.isPreferH() ? point.get_y() : point.get_x();
++  return !RTUTIL.getScaleList(line, line, layer.getPreferTrackGridList()).empty();
++}
++
+ std::vector<LayerCoord> nativeTargets(PAPin* pin)
+ {
+   auto& layers = RTDM.getDatabase().get_routing_layer_list();
+@@ -69,6 +76,11 @@
+     int32_t target = std::clamp(current, bottom, top);
+     if (pin->get_is_core()) {
+       target = current >= top ? std::max(bottom, top - 1) : std::min(top, std::max(bottom, current) + 1);
++    }
++    // DEF TRACKS locates parallel centerlines. A terminal can be on one
++    // centerline even beyond the last orthogonal tick at a die boundary.
++    if (!pin->get_is_core() && current == target && onPreferredTrack(access.getRealLayerCoord())) {
++      result.push_back(access.getRealLayerCoord());
+     }
+     auto& layer = layers.at(target);
+     int32_t reach = RTDM.getDatabase().get_detection_distance();
+@@ -256,7 +268,7 @@
+     PAPin* pa_pin = net_pin_pair.second;
+     std::vector<AccessPoint>& access_point_list = net_pin_pair.second->get_access_point_list();
+     std::vector<LayerRect> legal_shape_list = getLegalShapeList(pa_model, net_pin_pair.first, pa_pin);
+-    for (AccessPoint& access_point : getAccessPointList(pa_model, pa_pin->get_pin_idx(), legal_shape_list)) {
++    for (AccessPoint& access_point : getAccessPointList(pa_model, pa_pin->get_pin_idx(), legal_shape_list, useDefTracks() && !pa_pin->get_is_core())) {
+       access_point_list.push_back(access_point);
+     }
+     std::sort(access_point_list.begin(), access_point_list.end(),
+@@ -485,7 +497,7 @@
+   return legal_rect_list;
+ }
+ 
+-std::vector<AccessPoint> PinAccessor::getAccessPointList(PAModel& pa_model, int32_t pin_idx, std::vector<LayerRect>& legal_shape_list)
++std::vector<AccessPoint> PinAccessor::getAccessPointList(PAModel& pa_model, int32_t pin_idx, std::vector<LayerRect>& legal_shape_list, bool keep_contact)
+ {
+   Die& die = RTDM.getDatabase().get_die();
+   int32_t manufacture_grid = RTDM.getDatabase().get_manufacture_grid();
+@@ -588,7 +600,27 @@
+   }
+   std::sort(layer_coord_list.begin(), layer_coord_list.end(), CmpLayerCoordByXASC());
+   layer_coord_list.erase(std::unique(layer_coord_list.begin(), layer_coord_list.end()), layer_coord_list.end());
++  // Uniform spatial sampling can discard all actual track contacts from a port.
++  bool found_contact = false;
++  LayerCoord contact;
++  if (keep_contact) {
++    const auto& config = RTDM.getConfig();
++    for (const LayerCoord& coord : layer_coord_list) {
++      if (coord.get_layer_idx() >= config.bottom_routing_layer_idx && coord.get_layer_idx() <= config.top_routing_layer_idx && onPreferredTrack(coord)) {
++        contact = coord;
++        found_contact = true;
++        break;
++      }
++    }
++  }
+   uniformSampleCoordList(pa_model, layer_coord_list);
++  if (found_contact && std::find(layer_coord_list.begin(), layer_coord_list.end(), contact) == layer_coord_list.end()) {
++    if (static_cast<int32_t>(layer_coord_list.size()) == pa_model.get_pa_com_param().get_max_candidate_point_num()) {
++      layer_coord_list.back() = contact;
++    } else {
++      layer_coord_list.push_back(contact);
++    }
++  }
+   std::vector<AccessPoint> access_point_list;
+   for (LayerCoord& layer_coord : layer_coord_list) {
+     access_point_list.emplace_back(pin_idx, layer_coord);
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.hpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.hpp
+@@ -60,7 +60,7 @@
+   void initAccessPointList(PAModel& pa_model);
+   std::vector<LayerRect> getLegalShapeList(PAModel& pa_model, int32_t net_idx, PAPin* pa_pin);
+   std::vector<PlanarRect> getPlanarLegalRectList(PAModel& pa_model, int32_t curr_net_idx, PAPin* pa_pin, std::vector<EXTLayerRect>& pin_shape_list);
+-  std::vector<AccessPoint> getAccessPointList(PAModel& pa_model, int32_t pin_idx, std::vector<LayerRect>& legal_shape_list);
++  std::vector<AccessPoint> getAccessPointList(PAModel& pa_model, int32_t pin_idx, std::vector<LayerRect>& legal_shape_list, bool keep_contact);
+   void uniformSampleCoordList(PAModel& pa_model, std::vector<LayerCoord>& layer_coord_list);
+   void uploadAccessPointList(PAModel& pa_model);
+   void routePAModel(PAModel& pa_model);

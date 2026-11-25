@@ -1,0 +1,90 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -66,6 +66,79 @@
+   return !RTUTIL.getScaleList(line, line, layer.getPreferTrackGridList()).empty();
+ }
+ 
++
++// Some standard-cell ports have just enough metal for the default via.
++// Their admissible centers form a line or a point; polygon-area operations
++// can discard these. Check the actual emitted via against original geometry.
++bool clearDefaultVia(int32_t net, LayerCoord source, LayerCoord landing)
++{
++  auto& db = RTDM.getDatabase();
++  for (const NetShape& metal : RTDM.getNetDetailedShapeList(net, source, landing)) {
++    if (!RTUTIL.isInside(db.get_die().get_real_rect(), metal)) return false;
++    auto bounds = RTUTIL.getRegularRect(RTUTIL.getEnlargedRect(metal, db.get_detection_distance()), db.get_die().get_real_rect());
++    EXTPlanarRect query;
++    query.set_real_rect(bounds);
++    query.set_grid_rect(RTUTIL.getClosedGCellGridRect(bounds, db.get_gcell_axis()));
++    auto fixed = RTDM.getTypeLayerNetFixedRectMap(query);
++    for (const auto& [other, shapes] : fixed[metal.get_is_routing()][metal.get_layer_idx()]) {
++      if (other == net) continue;
++      for (const EXTLayerRect* obstacle : shapes) {
++        int32_t spacing;
++        if (metal.get_is_routing()) {
++          auto& layer = db.get_routing_layer_list()[metal.get_layer_idx()];
++          spacing = std::max({layer.getPRLSpacing(metal), layer.getPRLSpacing(obstacle->get_real_rect()), layer.get_eol_spacing(), 0});
++        } else {
++          auto& layer = db.get_cut_layer_list()[metal.get_layer_idx()];
++          spacing = std::max({layer.get_curr_spacing(), layer.get_curr_prl_spacing(), layer.get_curr_eol_spacing(), 0});
++        }
++        if (RTUTIL.isOpenOverlap(RTUTIL.getEnlargedRect(metal, spacing), obstacle->get_real_rect())) return false;
++      }
++    }
++  }
++  return true;
++}
++
++void addEnclosedLanding(PAPin* pin, int32_t net, int32_t limit)
++{
++  auto& db = RTDM.getDatabase();
++  const int32_t bottom = RTDM.getConfig().bottom_routing_layer_idx;
++  if (!pin->get_is_core() || bottom < 1 || bottom + 1 > RTDM.getConfig().top_routing_layer_idx) return;
++  auto& landing = db.get_routing_layer_list()[bottom];
++  auto& next = db.get_routing_layer_list()[bottom+1];
++  if (landing.isPreferH() == next.isPreferH()) return;
++  auto& points = pin->get_access_point_list();
++  for (auto& ap : points) {
++    const auto& p = ap.get_real_coord();
++    if (onPreferredTrack(LayerCoord(p,bottom)) && onPreferredTrack(LayerCoord(p,bottom+1))) return;
++  }
++  const auto& enclosure = db.get_layer_via_master_list().at(bottom-1).front().get_below_enclosure();
++  const int32_t step = db.get_manufacture_grid();
++  for (int grade = 2; grade >= 1; --grade) {
++    for (const auto& shape : pin->get_routing_shape_list()) {
++      if (shape.get_layer_idx() != bottom-1) continue;
++      const auto& rect = shape.get_real_rect();
++      const int32_t lx = rect.get_ll_x() - enclosure.get_ll_x(), ux = rect.get_ur_x() - enclosure.get_ur_x();
++      const int32_t ly = rect.get_ll_y() - enclosure.get_ll_y(), uy = rect.get_ur_y() - enclosure.get_ur_y();
++      if (lx > ux || ly > uy) continue;
++      auto xs=RTUTIL.getScaleList(lx,ux,landing.isPreferH() ? next.getXTrackGridList() : landing.getXTrackGridList());
++      auto ys=RTUTIL.getScaleList(ly,uy,landing.isPreferH() ? landing.getYTrackGridList() : next.getYTrackGridList());
++      if (grade == 1) {
++        if (landing.isPreferH() && xs.empty()) xs.push_back(((int64_t(lx)+ux)/2/step)*step);
++        if (!landing.isPreferH() && ys.empty()) ys.push_back(((int64_t(ly)+uy)/2/step)*step);
++      }
++      for (int32_t x : xs) for (int32_t y : ys) {
++        if (x < lx || x > ux || y < ly || y > uy || x % step || y % step) continue;
++        LayerCoord p(x,y,bottom-1);
++        if (!clearDefaultVia(net,p,LayerCoord(x,y,bottom))) continue;
++        if (std::any_of(points.begin(),points.end(),[&p](AccessPoint& ap){return ap.getRealLayerCoord()==p;})) return;
++        if (static_cast<int32_t>(points.size())>=limit) points.pop_back();
++        points.emplace_back(pin->get_pin_idx(),p);
++        return;
++      }
++    }
++  }
++}
++
+ std::vector<LayerCoord> nativeTargets(PAPin* pin)
+ {
+   auto& layers = RTDM.getDatabase().get_routing_layer_list();
+@@ -272,6 +345,7 @@
+     for (AccessPoint& access_point : getAccessPointList(pa_model, pa_pin->get_pin_idx(), legal_shape_list, useDefTracks() && !pa_pin->get_is_core())) {
+       access_point_list.push_back(access_point);
+     }
++    if (useDefTracks()) addEnclosedLanding(pa_pin, net_pin_pair.first, pa_model.get_pa_com_param().get_max_candidate_point_num());
+     std::sort(access_point_list.begin(), access_point_list.end(),
+               [](AccessPoint& a, AccessPoint& b) { return CmpLayerCoordByXASC()(a.getRealLayerCoord(), b.getRealLayerCoord()); });
+     if (access_point_list.empty()) {

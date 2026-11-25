@@ -1,0 +1,60 @@
+  if (const char* file = std::getenv("IEDA_RT_NATIVE_TERMINAL_ECO")) {
+    if (cursor != total_box_num || cursor != 4761) throw std::runtime_error("terminal ECO requires complete DR checkpoint");
+    std::ifstream input(file);
+    std::ofstream results("/work/native-eco.tsv");
+    int requests = 0, net, x1, y1, x2, y2, left, right;
+    while (input >> net >> x1 >> y1 >> x2 >> y2 >> left >> right) {
+      if (net < 0 || net >= int(dr_model.get_dr_net_list().size()) || left < 1 || right < 1 ||
+          left > 32 || right > 32 || x1 >= x2 || y1 >= y2) throw std::runtime_error("invalid local ECO request");
+      DRBox box;
+      EXTPlanarRect ext;
+      PlanarRect local(x1,y1,x2,y2);
+      ext.set_real_rect(local);
+      ext.set_grid_rect(RTUTIL.getOpenGCellGridRect(local,RTDM.getDatabase().get_gcell_axis()));
+      box.set_box_rect(ext);
+      DRBoxId id;id.set_x(requests++);id.set_y(0);box.set_dr_box_id(id);
+      box.set_initial_routing(true);
+      box.set_dr_iter_param(&dr_model.get_dr_iter_param());
+      buildFixedRect(box);
+      buildAccessPoint(box);
+      // Existing geometry is a read-only routing environment. Only newly searched paths are committed.
+      box.set_net_detailed_result_map(RTDM.getNetDetailedResultMap(ext));
+      box.set_net_detailed_patch_map(RTDM.getNetDetailedPatchMap(ext));
+      auto* task=new DRTask;
+      task->set_net_idx(net);
+      task->set_connect_type(dr_model.get_dr_net_list().at(net).get_connect_type());
+      task->set_bounding_box(local);
+      task->set_routed_times(0);
+      for (int count:{left,right}) {
+        DRGroup group;
+        for(int k=0;k<count;k++) {
+          int x,y,l;
+          if(!(input>>x>>y>>l) || x<x1||x>x2||y<y1||y>y2||l<1||l>5)
+            throw std::runtime_error("invalid ECO attachment");
+          group.get_coord_direction_map()[LayerCoord(x,y,l)].insert(RTDM.getDatabase().get_routing_layer_list().at(l).get_prefer_direction());
+        }
+        task->get_dr_group_list().push_back(group);
+      }
+      box.get_dr_task_list().push_back(task);
+      buildBoxTrackAxis(box);
+      buildLayerNodeMap(box);
+      buildLayerShadowMap(box);
+      buildDRNodeNeighbor(box);
+      buildOrientNetMap(box);
+      buildNetShadowMap(box);
+      exemptPinShape(dr_model,box);
+      routeDRBox(box);
+      updateBestResult(box);
+      auto& wires=box.get_best_net_task_detailed_result_map().at(net);
+      if(wires.empty())throw std::runtime_error("native ECO returned no conductors");
+      results<<net<<" "<<wires.size()<<" "<<box.get_best_net_task_detailed_patch_map()[net].size()<<" "<<box.get_best_route_violation_list().size()<<std::endl;
+      RTLOG.info(Loc::current(),"EDA_TERMINAL_ECO net=",net," segments=",wires.size()," native local markers=",box.get_best_route_violation_list().size());
+      uploadBestResult(box);
+      freeDRBox(box);
+    }
+    if(!input.eof() || requests<1 || !std::getenv("IEDA_RT_SAVE_DR_BATCH"))throw std::runtime_error("incomplete native ECO requests");
+    saveDetailedBatch(total_box_num);
+    results.close();
+    RTLOG.info(Loc::current(),"ECO_CHECKPOINT_READY requests=",requests);
+    std::exit(0);
+  }

@@ -80,6 +80,10 @@ export class AgentHub{
       if(receipt)this.observeValue(s,receipt.value);
     }
     if(s.busy){s.busy=false;s.status={phase:'interrupted',title:'工作台服务已重启',detail:'检查点已保留。可查询持久作业，再发送消息继续；不会自动重新提交。',at:Date.now()};}
+    if(!s.qualification){
+      const receipt=s.events.findLast(e=>e.type==='tool_end'&&e.name==='mp_bp_multi_route'&&e.value?.qualification);
+      if(receipt)this.observeValue(s,receipt.value);
+    }
     this.sessions.set(s.id,s);
   }return this;}
   session(id){const s=this.sessions.get(id);if(!s)throw Error('会话不存在');return s;}
@@ -149,6 +153,26 @@ export class AgentHub{
     }catch(e){await this.event(s,'tool_error',{name:call.name,callId:call.id,error:e.message,durationMs:Date.now()-started});throw e;}
   }
   observeValue(s,value){const task=value?.task||value;if(task?.state_id&&task.contract&&task.plan)s.task=task;if(value?.job)s.job=value.job;if(task?.job)s.job=task.job;
+    if(value?.short_review && s.qualification?.delivery?.files?.['final.def']?.sha256===value.short_review.parent){
+      s.shortReview=value.short_review;
+      if(value.short_files){
+        const folder=path.resolve(taskRun(this.agent(s)));
+        for(const ref of value.short_files){
+          if(!/^bp-multi-hotspot\.(html|json|def\.gz)$/.test(ref.name)||path.resolve(ref.path)!==path.join(folder,ref.name)||value.short_review.manifest.files[ref.name]?.sha256!==ref.sha256)throw Error('局部候选文件与验收清单不符');
+          s.artifacts=s.artifacts.filter(a=>a.name!==ref.name);
+          s.artifacts.push({name:ref.name,kind:ref.kind,bytes:ref.bytes,sha256:ref.sha256,url:`/api/sessions/${s.id}/artifacts/${encodeURIComponent(ref.name)}`});
+        }
+      }
+    }
+    if(value?.qualification?.run==='full-lazy-a299a1d992ac'&&value.case_id==='bp_multi'){
+      s.qualification=value.qualification;
+      if(value.qualification_files){
+        const folder=path.resolve(taskRun(this.agent(s)));
+        if(!value.qualification.delivery||value.qualification_files.some(a=>path.dirname(path.resolve(a.path))!==folder
+            ||path.basename(a.path)!==a.name||value.qualification.delivery.files[a.name]?.sha256!==a.sha256))throw Error('资格分支交付文件与清单不一致');
+        s.artifacts=value.qualification_files.map(({name,kind,bytes,sha256})=>({name,kind,bytes,sha256,url:`/api/sessions/${s.id}/artifacts/${encodeURIComponent(name)}`}));
+      }
+    }
     if(task?.download_verified===true&&task.deliverables&&s.task?.goal_certified&&task.state_id===s.task.state_id&&task.run===s.task.run){
       s.task={...s.task,download_verified:true,deliverables:task.deliverables};
     }
@@ -169,8 +193,41 @@ export class AgentHub{
     await this.status(s,'completed','交付已完成','报告、版图预览和设计文件已下载校验；质量结论见报告。');
     return true;
   }
+  async shortQuality(id,action){
+    const s=this.session(id);
+    if(s.busy)throw Error('当前会话正在执行操作');
+    if(!s.qualification?.delivery || !['diagnose','status','repair'].includes(action))throw Error('请先打开已交付的 bp_multi 会话');
+    const args={action};
+    if(action==='repair'){
+      if(!s.shortReview?.proposal_id)throw Error('请先取得服务器诊断和候选编号');
+      args.proposal_id=s.shortReview.proposal_id;
+    }
+    s.busy=true;
+    try{
+      const result=await this.execute(s,{name:'mp_bp_multi_quality',id:'short-'+randomUUID(),arguments:JSON.stringify(args)});
+      if(!result.short_review)throw Error(result.error||'服务器没有返回短路复验记录');
+      await this.status(s,'completed','局部质量检查已更新',result.short_review.status);
+    }finally{s.busy=false;await this.save(s);}
+    return this.view(s);
+  }
   async refresh(id){
     const s=this.session(id);if(s.busy)return this.view(s);
+    if(s.qualification&&!s.task){
+      const req={mode:'task',operation:'bp_multi_route',run:taskRun(this.agent(s)),action:'status'};
+      const current=await this.transport(req);
+      if(s.busy)return this.view(s);
+      if(current.qualification?.delivery&&!s.artifacts.length){
+        s.busy=true;
+        try{
+          const delivered=await this.transport({...req,action:'delivery'});
+          this.observeValue(s,delivered);
+          await this.status(s,'completed','整芯片流程已交付','报告、版图预览、DEF 与 GDS 均已校验');
+        }finally{s.busy=false;await this.save(s);}
+      }else if(JSON.stringify(s.qualification)!==JSON.stringify(current.qualification)){
+        this.observeValue(s,current);await this.save(s);
+      }
+      return this.view(s);
+    }
     const value=s.job?await this.transport({mode:'task',operation:'job_status',run:taskRun(this.agent(s)),job_id:s.job.job_id}):await this.transport({mode:'task',operation:'context',run:taskRun(this.agent(s))});
     this.observeValue(s,value);await this.event(s,'remote_refresh',{value});
     if(!this.active.size&&canDeliverCompletedTask(value?.task||value,s.job)){

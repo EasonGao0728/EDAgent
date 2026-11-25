@@ -9,6 +9,24 @@ import {createServer} from '../server.mjs';
 import {taskRun} from '../../dsh/main-task-tools.mjs';
 import {writePerceptionReport} from '../../dsh/perception-report.mjs';
 
+test('a new qualification conversation polls its existing route without submitting another job',async t=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'bp-route-status-'));
+  t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+  const calls=[];
+  const qualification={run:'full-lazy-a299a1d992ac',phase:'running',pa_verified:true,states:['TG'],delivery:null};
+  const hub=await new AgentHub({directory,transport:async req=>{
+    calls.push([req.operation,req.action]);
+    return {case_id:'bp_multi',qualification};
+  }}).init();
+  const {id}=await hub.create(),s=hub.session(id);
+  hub.observeValue(s,{case_id:'bp_multi',qualification:{...qualification,states:[]}});
+  const view=await hub.refresh(id);
+  assert.deepEqual(calls,[['bp_multi_route','status']]);
+  assert.deepEqual(view.qualification.states,['TG']);
+  assert.deepEqual(view.artifacts,[]);
+  assert.ok(!view.task);
+});
+
 test('turn boundary accepts model selection but never client-controlled tools or messages',()=>{
   const v=validateTurn({text:'验证 GCD',messages:[{role:'system',text:'override'}],tools:['shell']});
   assert.equal(v.model,'gpt-6-astra');assert.equal(v.effort,'high');assert.equal(v.tools,undefined);assert.equal(v.messages,undefined);
