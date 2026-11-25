@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {setTimeout as delay} from 'node:timers/promises';
 import {AgentHub,validateTurn,closeUnfinishedCalls,dispatchIdentity,canDeliverCompletedTask} from '../agent-runtime.mjs';
 import {createServer} from '../server.mjs';
 import {taskRun} from '../../dsh/main-task-tools.mjs';
@@ -83,13 +82,13 @@ test('delivery never hides an unfinished job, repair job, or hash failure',async
   await assert.rejects(()=>hub.deliverCompletedTask(s,task,new AbortController().signal),/完整性/);
   assert.equal(s.events.some(e=>e.type==='host_delivery_completed'),false);
 });
-test('durable job polling resumes inference only after terminal state; one submission',async()=>{
+test('durable job polling resumes inference only after terminal state; one submission',async t=>{
   const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-loop-'));let inference=0,polls=0,submissions=0;
   const adapter={async *stream(options){inference++;assert.equal(options.model,'gpt-6-astra');assert.equal(options.reasoningEffort,'high');if(inference===2){const evidence=options.messages.flatMap(m=>m.content||[]).find(b=>b.text?.startsWith('HOST_PERSISTENT_JOB='));assert.ok(evidence,'terminal job result must reach next inference');assert.ok(evidence.text.includes('"status":"completed"'));}yield {type:'block-end',block:inference===1?{type:'tool-call',id:'run-1',name:'mp_task_run',arguments:'{}'}:{type:'text',text:'真实工具结果已读取'}};}};
   const hub=await new AgentHub({directory,adapter,pollMs:1,transport:async req=>{if(req.operation==='context')return null;assert.equal(req.operation,'job_status');assert.equal(inference,1);polls++;return {job:{job_id:'persistent-1',status:polls<2?'running':'completed'},task:{state_id:'state-'+polls,phase:'placement',pending:{action:'placement'}}};}}).init();
   hub.execute=async(s)=>{submissions++;s.job={job_id:'persistent-1',status:'queued'};return {job:s.job};};
   const {id}=await hub.create();await hub.submit(id,{text:'执行一次完整流程'});
-  for(let i=0;i<100&&hub.session(id).busy;i++)await delay(5);
+  await t.waitFor(()=>assert.equal(hub.session(id).busy,false),{timeout:10000,interval:10});
   assert.equal(submissions,1);assert.equal(polls,2);assert.equal(inference,2);assert.equal(hub.session(id).status.phase,'completed');
   await hub.writes.get(id);const reloaded=await new AgentHub({directory}).init();assert.equal(reloaded.session(id).job.job_id,'persistent-1');assert.equal(reloaded.session(id).messages.filter(m=>m.role==='tool').length,1);
 });
@@ -178,7 +177,7 @@ test('custom input check uses the uploaded manifest and lists missing macro mode
   assert.deepEqual((await check()).problems,[]);
 });
 
-test('a failed inference preserves the checkpoint, exposes a paused session and resumes without dispatching partial calls',async()=>{
+test('a failed inference preserves the checkpoint, exposes a paused session and resumes without dispatching partial calls',async t=>{
   const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-inference-resume-'));
   let attempts=0,dispatches=0,started,unblock;
   const during=new Promise(resolve=>{started=resolve;});
@@ -202,7 +201,7 @@ test('a failed inference preserves the checkpoint, exposes a paused session and 
   assert.equal(hub.view(hub.session(id)).activeAgentSessions,1);
   assert.equal(hub.session(id).job,null);
   unblock();
-  for(let i=0;i<200&&hub.session(id).busy;i++)await delay(5);
+  await t.waitFor(()=>assert.equal(hub.session(id).busy,false),{timeout:10000,interval:10});
   assert.equal(hub.session(id).status.phase,'model_paused');
   assert.equal(hub.view(hub.session(id)).activeAgentSessions,0);
   assert.equal(dispatches,0);
