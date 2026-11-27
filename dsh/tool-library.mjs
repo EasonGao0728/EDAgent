@@ -10,7 +10,9 @@ const row=(id,title,stage,description,tools,options={})=>({id,title,stage,descri
   provider:'iEDA / 主 Agent',status:'registered',execution:'server',
   scope:'登记案例与原有服务器门禁；检索命中不等于当前可执行',...options});
 export const CARDS=[
+  row('bp-multi-route','bp_multi 布线检查点续接','routing','查询 Nangate45 bp_multi 的原生状态。首次运行使用合法化 DEF，经核验的修复从服务器列出的最近检查点恢复，返回原生进度及产物。',['mp_bp_multi_route'],{status:'conditional',scope:'限 bp_multi 的冻结输入、已验证构建与匹配的检查点，每次绑定一个活动作业'}),
   row('session-control','任务与远程作业','diagnosis',CARD_COPY['session-control'][1],['mp_task_start','mp_task_open','mp_task_observe','mp_task_job_status','mp_task_job_cancel','mp_task_download']),
+  row('bp-multi-metal-short','bp_multi 金属短路诊断与局部修复','optimization','按层、位置和网络定位短路，从固定父 DEF 派生单网候选，以同版 iDRC 和全片连通检查决定是否接受。',['mp_bp_multi_quality'],{status:'conditional',scope:'绑定已交付的 Nangate45 bp_multi DEF 和补线检查点'}),
   row('agent-memory','子目标与反思记忆','diagnosis',CARD_COPY['agent-memory'][1],['mp_agent_subgoal','mp_agent_reflect'],{execution:'local'}),
   row('tool-discovery','工具检索与按需加载','diagnosis',CARD_COPY['tool-discovery'][1],['mp_tools_search','mp_tools_load'],{execution:'local'}),
   row('pre-route-quality','IO / HPWL / hold 成本收益审查','optimization','预布线IO坐标适配、原生与独立HPWL一致性、hold缓冲器时序收益和面积网络代价；复用DRV检查点，候选不满足门禁则保留原结果，不重跑布局或布线。',['mp_quality_inspect','mp_quality_execute'],{status:'conditional',scope:'当前仅已登记SWERV Nangate45；拥塞/DRC/RC时序未测，不能推断通过'}),

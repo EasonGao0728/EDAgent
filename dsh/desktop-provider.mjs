@@ -35,7 +35,7 @@ export function apply(ctx){
       const task=taskContext(options.messages);
       const effort=options.reasoningEffort||'xhigh';
       let currentQuota=null;
-      const r=await modelWithRecovery({signal:options.signal,beforeAttempt:async attempt=>{
+      const r=await modelWithRecovery({signal:options.signal,onRetry:options.onModelRetry,beforeAttempt:async attempt=>{
         currentQuota=await quotaGuard(path.join(root,'.cache/dsh-quota.json'));
         const history=await fs.readFile(log,'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;});
         const requestLimit=turnRequestLimit(task);

@@ -1,0 +1,21 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -722,7 +722,17 @@
+     Monitor stage_monitor;
+ #pragma omp parallel for
+     for (PABoxId& pa_box_id : pa_box_id_list) {
+-      PABox& pa_box = pa_box_map[pa_box_id.get_x()][pa_box_id.get_y()];
++      PABox& scheduled = pa_box_map[pa_box_id.get_x()][pa_box_id.get_y()];
++      PABox working;
++      if (useDefTracks()) {
++        // Uploaded routes and selected access points persist in the design model.
++        // Let box-local obstacle maps, shadows and winning-path copies expire here.
++        working.set_box_rect(scheduled.get_box_rect());
++        working.set_pa_box_id(scheduled.get_pa_box_id());
++        working.set_pa_iter_param(scheduled.get_pa_iter_param());
++        working.set_initial_routing(scheduled.get_initial_routing());
++      }
++      PABox& pa_box = useDefTracks() ? working : scheduled;
+       buildFixedRect(pa_box);
+       buildAccessPoint(pa_box);
+       buildAccessResult(pa_box);

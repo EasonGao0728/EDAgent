@@ -1,5 +1,5 @@
 """Desktop transport. SSH credentials and LLM authorization never leave desktop."""
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import base64
 import copy
 import hashlib
@@ -13,20 +13,23 @@ import uuid
 import time
 
 ROOT=Path(__file__).resolve().parents[1]
-CONFIG=ROOT/'environments/remote-server.json'
+CONFIG=Path(os.environ.get('EDAGENT_REMOTE_PROFILE') or ROOT/'environments/remote-server.json')
 
 
 def config():
-    c=json.loads(CONFIG.read_text(encoding='utf-8'))
-    if not c['enabled'] or c['local_fallback']:raise ValueError('Remote execution must be enabled without local fallback')
-    if c['ssh_host'] not in ('eda-worker','eda-backup') or c['server_root']!='/srv/edagent/main-agent-remote-v1':
-        raise ValueError('Unreviewed server configuration')
+    c=json.loads(CONFIG.read_text(encoding='utf-8-sig'))
+    if c['enabled'] is not True or c['local_fallback'] is not False:raise ValueError('Remote execution must be enabled without local fallback')
+    host, root = c['ssh_host'], c['server_root']
+    if (not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', host)
+            or not re.fullmatch(r'(?:/[A-Za-z0-9_-]+)+/main-agent-remote-v1', root)
+            or type(c.get('server_uid')) is not int or c['server_uid'] <= 0):
+        raise ValueError('Configure the SSH alias, absolute worker directory and non-root UID')
     return c
 
 
 def rpc(request):
     c=config();root=c['server_root']
-    command='cd '+shlex.quote(root)+' && PYTHONPATH='+shlex.quote(root+':/srv/edagent/python')+' python3 -B -m macro_agent.remote_service'
+    command='cd '+shlex.quote(root)+' && PYTHONPATH='+shlex.quote(root+':'+str(PurePosixPath(root).parent/'python'))+' python3 -B -m macro_agent.fifo_service'
     try:
         p=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=12','-o','ServerAliveInterval=10',
             '-o','ServerAliveCountMax=2',c['ssh_host'],command],input=json.dumps(request,ensure_ascii=False),
@@ -51,7 +54,7 @@ def swerv_screening(operation='status'):
     if operation not in ('start','status','metric_start','metric_status','nohold_start','nohold_status','io_start','io_status'):raise ValueError('Invalid study operation')
     c=config();root=c['server_root']
     module='swerv_io_study' if operation.startswith('io_') else 'swerv_no_hold' if operation.startswith('nohold_') else 'swerv_metric_audit' if operation.startswith('metric_') else 'swerv_screening'
-    command='cd '+shlex.quote(root)+' && PYTHONPATH='+shlex.quote(root+':/srv/edagent/python')+' python3 -B -m macro_agent.'+module
+    command='cd '+shlex.quote(root)+' && PYTHONPATH='+shlex.quote(root+':'+str(PurePosixPath(root).parent/'python'))+' python3 -B -m macro_agent.'+module
     try:
         p=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=12',c['ssh_host'],command],
             input=json.dumps({'operation':operation.removeprefix('metric_').removeprefix('nohold_').removeprefix('io_')}),capture_output=True,text=True,encoding='utf-8',timeout=45,
@@ -64,11 +67,70 @@ def swerv_screening(operation='status'):
     return value['value']
 
 
+def bp_multi_routing(operation='status'):
+    """Start or inspect the single frozen server qualification branch."""
+    if operation not in ('start','status'):
+        raise ValueError('Unsupported routing operation')
+    c=config()
+    directory=c['server_root']+'/qualification-evidence/catalog-v1/tg-study'
+    command='cd '+shlex.quote(directory)+' && python3 -B workbench_route.py '+operation
+    result=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=12',c['ssh_host'],command],
+                          capture_output=True,text=True,encoding='utf-8',timeout=35,
+                          creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    if result.returncode:
+        raise RuntimeError(result.stderr[-600:] or 'Unable to query bp_multi continuation')
+    return json.loads(result.stdout)
+
+
+def download_bp_multi(folder, status):
+    """Publish the verified qualification files only after full backend readback."""
+    manifest=status.get('delivery') or {}
+    names={'final.def':'final_def','final.v':'final_netlist','final.gds':'final_gds',
+           'placement.svg':'preview','report.html':'report','acceptance.json':'acceptance'}
+    files=manifest.get('files',{})
+    if (status['run']!='full-lazy-a299a1d992ac' or status['continuation'].get('phase')!='delivery'
+            or manifest.get('case')!='bp_multi' or manifest.get('completed')!=17 or manifest.get('run')!=status['run']
+            or manifest.get('router')!=status.get('binary_sha256') or set(files)!=set(names)):
+        raise ValueError('bp_multi has no verified full backend delivery yet')
+    c=config()
+    remote=c['server_root']+'/runs/bp-multi-official-pa-v1/'+status['run']+'/backend/delivery/'
+    return verified_qualification_files(folder, names, files, c, remote, (status.get('budget') or {}).get('unlimited'))
+
+
+def verified_qualification_files(folder,names,files,c,remote,unlimited):
+    import tempfile
+    if set(files)!=set(names):
+        raise ValueError('Unexpected qualification manifest')
+    folder.mkdir(exist_ok=True,parents=True)
+    def digest(p):
+        with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+    refs=[]
+    with tempfile.TemporaryDirectory(dir=folder) as holder:
+        for name,kind in names.items():
+            row=files[name]
+            if not re.fullmatch('[a-f0-9]{64}',row['sha256']) or type(row['bytes'])!=int or row['bytes']<=0:
+                raise ValueError('Invalid remote artifact identity')
+            local=folder/name
+            cached=local.is_file() and digest(local)==row['sha256']
+            if cached and local.stat().st_size!=row['bytes']:
+                raise ValueError('Invalid manifest size: '+name)
+            if not cached:
+                tmp=Path(holder)/name
+                subprocess.run(['scp','-q','-C','-o','BatchMode=yes','-o','ConnectTimeout=15',
+                                '-o','ServerAliveInterval=30','-o','ServerAliveCountMax=4',
+                                c['ssh_host']+':'+remote+name,str(tmp)],check=True,
+                               timeout=None if unlimited else 600)
+                if tmp.stat().st_size!=row['bytes'] or digest(tmp)!=row['sha256']:raise ValueError('Corrupt transfer: '+name)
+                os.replace(tmp,local)
+            refs.append({'kind':kind,'name':name,'path':str(local),'bytes':row['bytes'],'sha256':row['sha256']})
+    return refs
+
+
 def hold_calibration(operation='status',phase='api'):
     """Explicit fixed research campaign; no production restart or local fallback."""
     if operation not in ('start','status') or not re.fullmatch('[a-z0-9-]+',phase):raise ValueError('Invalid research operation')
     c=config();root=c['server_root']
-    command='cd '+shlex.quote(root)+' && PYTHONPATH='+shlex.quote(root+':/srv/edagent/python')+' python3 -B -m macro_agent.hold_calibration'
+    command='cd '+shlex.quote(root)+' && PYTHONPATH='+shlex.quote(root+':'+str(PurePosixPath(root).parent/'python'))+' python3 -B -m macro_agent.hold_calibration'
     try:
         p=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=12',c['ssh_host'],command],input=json.dumps({'operation':operation,'phase':phase}),capture_output=True,text=True,encoding='utf-8',timeout=45,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     except subprocess.TimeoutExpired as e:raise RuntimeError('REMOTE_REPLY_UNKNOWN: query the same calibration phase; do not resubmit a new identity') from e
@@ -82,7 +144,7 @@ def hold_repair(operation='status',phase='build'):
     """Fixed repair study; no arbitrary remote command or duplicate submission."""
     if operation not in ('start','status') or not re.fullmatch('[a-z0-9-]+',phase):raise ValueError('Invalid repair operation')
     c=config();root=c['server_root']
-    command='cd '+shlex.quote(root)+' && PYTHONPATH='+shlex.quote(root+':/srv/edagent/python')+' python3 -B -m macro_agent.hold_repair'
+    command='cd '+shlex.quote(root)+' && PYTHONPATH='+shlex.quote(root+':'+str(PurePosixPath(root).parent/'python'))+' python3 -B -m macro_agent.hold_repair'
     try:
         p=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=12',c['ssh_host'],command],input=json.dumps({'operation':operation,'phase':phase}),capture_output=True,text=True,encoding='utf-8',timeout=45,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     except subprocess.TimeoutExpired as e:raise RuntimeError('REMOTE_REPLY_UNKNOWN: query same repair phase') from e
@@ -231,6 +293,41 @@ def dispatch(req):
     if mode!='task':raise ValueError('Not a remote task operation')
     folder=local_folder(req['run']);op=req['operation']
     mapping=folder/'remote-task.json'
+    if op=='bp_multi_quality':
+        parent=folder/'final.def'
+        if mapping.exists() or not parent.is_file():
+            raise ValueError('Open the completed bp_multi delivery conversation')
+        with parent.open('rb') as stream:
+            if hashlib.file_digest(stream,'sha256').hexdigest()!='cfa1cf9b26c4862565e94535e6cfe0528f4b769d55ba0198507216318552f5d6':
+                raise ValueError('Unqualified parent DEF')
+        action=req['action']
+        proposal=req.get('proposal_id','')
+        if action not in ('diagnose','repair','status') or (action=='repair' and not re.fullmatch('[0-9a-f]{64}',proposal)):
+            raise ValueError('Invalid bp_multi quality action')
+        c=config()
+        script=c['server_root']+'/qualification-evidence/catalog-v1/tg-study/bp_short_agent.py'
+        args=['python3','-B',script,action]+([proposal] if action=='repair' else [])
+        proc=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=12',c['ssh_host'],shlex.join(args)],capture_output=True,text=True,encoding='utf-8',timeout=45)
+        if proc.returncode:raise RuntimeError(proc.stderr[-800:])
+        review=json.loads(proc.stdout)
+        result={'case_id':'bp_multi','short_review':review,'execution_location':'server'}
+        manifest=review.get('manifest')
+        if manifest and action=='status':
+            if (manifest['parent']!='cfa1cf9b26c4862565e94535e6cfe0528f4b769d55ba0198507216318552f5d6'
+                    or manifest['parent']!=review['parent'] or manifest['candidate_sha256']!=review['trial']['candidate_sha256']):
+                raise ValueError('Unbound bp_multi repair artifacts')
+            remote=c['server_root']+'/runs/bp-multi-official-pa-v1/full-lazy-a299a1d992ac/short-study-v1/delivery/'
+            names={'bp-multi-hotspot.def.gz':'candidate_def','bp-multi-hotspot.json':'quality_evidence','bp-multi-hotspot.html':'quality_report'}
+            result['short_files']=verified_qualification_files(folder,names,manifest['files'],c,remote,True)
+        return result
+    if op=='bp_multi_route':
+        if mapping.exists() or (folder/'task.json').exists():
+            raise ValueError('Open the qualification branch in a separate design conversation')
+        action=req['action']
+        status=bp_multi_routing('status' if action=='delivery' else action)
+        value={'qualification':status, 'case_id':'bp_multi','preserved_through':'legalization','execution_location':'server'}
+        if action=='delivery':value['qualification_files']=download_bp_multi(folder,status)
+        return value
     if mapping.exists():
         reserved=evidence_review_gate(folder,bind(folder),op)
         if reserved is not None:return reserved
@@ -253,6 +350,9 @@ def dispatch(req):
         return mirror(value,folder)
     if not (folder/'remote-task.json').exists() and op!='start':
         if op=='context' and not (folder/'task.json').exists():return None
+        if op=='observe' and not (folder/'task.json').exists():
+            return {'bound':False,'execution_location':'server','native_action_submitted':False,
+                    'detail':'本会话还没有绑定生产任务。已登记的资格分支可通过工具库查询。'}
         if op in ('context','observe','query','retrieve') and (folder/'task.json').exists():
             from .main_task import dispatch as historical
             value=historical(req)

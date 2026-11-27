@@ -1,0 +1,245 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -225,6 +225,106 @@
+   if (!lazyTargets()) return pin->get_target_coord_list();
+   scratch = nativeTargets(pin);
+   return scratch;
++}
++
++// Rank access points by the nearest real planar exit from their via stack.
++// The DEF tick ranges are finite and have independent origins per layer.
++bool containsTick(int32_t value, const std::vector<ScaleGrid>& grids)
++{
++  for (const auto& g : grids) {
++    if (value >= g.get_start_line() && value <= g.get_end_line()
++        && (value - g.get_start_line()) % g.get_step_length() == 0) return true;
++  }
++  return false;
++}
++int32_t accessRank(AccessPoint& ap)
++{
++  auto& db = RTDM.getDatabase();
++  auto& layers = db.get_routing_layer_list();
++  const auto& cfg = RTDM.getConfig();
++  const auto& xy = ap.get_real_coord();
++  const int32_t level = ap.get_layer_idx();
++  if (level >= cfg.bottom_routing_layer_idx && level <= cfg.top_routing_layer_idx && onPreferredTrack(ap.getRealLayerCoord())) return 1000;
++  int32_t best = -1;
++  for (int32_t i = cfg.bottom_routing_layer_idx; i <= cfg.top_routing_layer_idx; ++i) {
++    auto& layer = layers[i];
++    bool x = containsTick(xy.get_x(), layer.getXTrackGridList());
++    bool y = containsTick(xy.get_y(), layer.getYTrackGridList());
++    if (!x && !y) continue;
++    bool preferred = layer.isPreferH() ? y : x;
++    int32_t score = 500 - 10 * std::abs(i-level) + (preferred ? 2 : 0);
++    if (i < cfg.top_routing_layer_idx && preferred && layer.isPreferH() != layers[i+1].isPreferH()) {
++      auto& next = layers[i+1];
++      if (containsTick(next.isPreferH() ? xy.get_y() : xy.get_x(),next.getPreferTrackGridList())) score += 4;
++    }
++    best = std::max(best, score);
++  }
++  return best;
++}
++struct FailedPin {
++  int32_t net, pin;
++  std::string detail;
++};
++struct FailedBox { std::vector<FailedPin> pins; };
++void reportUnresolved(const std::vector<FailedPin>& failed)
++{
++  if (failed.empty()) return;
++  auto& nets = RTDM.getDatabase().get_net_list();
++  const auto* witness = std::getenv("IEDA_RT_PA_WITNESS");
++  std::ofstream out;
++  if (witness) {
++    out.open(std::string(witness)+".unresolved.tsv");
++    if (!out) RTLOG.error(Loc::current(),"Could not create unresolved endpoint report");
++    out << "net_idx\tnet\tpin_idx\tpin\n";
++  }
++  size_t shown = 0;
++  for (const auto& failure : failed) {
++    auto& net = nets.at(failure.net);
++    auto& pin = net.get_pin_list().at(failure.pin);
++    if (witness) out << failure.net << '\t' << net.get_net_name() << '\t' << failure.pin << '\t' << pin.get_pin_name() << '\n';
++    if (++shown <= 32) RTLOG.warn(Loc::current(),"EDA_PA_UNRESOLVED net=",net.get_net_name()," pin=",pin.get_pin_name(),failure.detail);
++  }
++  if (witness) { out.close(); if (!out) RTLOG.error(Loc::current(),"Incomplete unresolved endpoint report"); }
++  RTLOG.error(Loc::current(),"Unresolved native PA endpoints: ",failed.size());
++}
++
++// Use the scheduled GCells for ownership. Extend only the physical search
++// window, and only toward local candidates of owned pins. The one-GCell
++// limit on each side keeps periodic same-color boxes disjoint. A macro with
++// several distant pin shapes must never create a box spanning the macro.
++bool workingRegion(PAModel& model, PABox& scheduled, EXTPlanarRect& result)
++{
++  auto& db = RTDM.getDatabase();
++  auto& base = scheduled.get_box_rect();
++  auto& grid = base.get_grid_rect();
++  auto& map = db.get_gcell_map();
++  PlanarRect allowed_grid(std::max(0,grid.get_ll_x()-1),std::max(0,grid.get_ll_y()-1),
++                          std::min(map.get_x_size()-1,grid.get_ur_x()+1),std::min(map.get_y_size()-1,grid.get_ur_y()+1));
++  auto allowed = RTUTIL.getRealRectByGCell(allowed_grid, db.get_gcell_axis());
++  auto rect = base.get_real_rect();
++  int32_t lx=rect.get_ll_x(), ly=rect.get_ll_y(), ux=rect.get_ur_x(), uy=rect.get_ur_y();
++  const int32_t reach = db.get_detection_distance();
++  std::set<std::pair<int32_t,int32_t>> owned;
++  for (const auto& [net_idx, points] : RTDM.getNetAccessPointMap(base)) {
++    auto& net = model.get_pa_net_list()[net_idx];
++    for (const auto* point : points) {
++      auto& pin = net.get_pa_pin_list()[point->get_pin_idx()];
++      const auto& owners = pin.get_grid_coord_set();
++      if (owners.empty() || !RTUTIL.isInside(grid,*owners.begin()) || !owned.emplace(net_idx,pin.get_pin_idx()).second) continue;
++      for (auto& candidate : pin.get_access_point_list()) {
++        const auto& p = candidate.get_real_coord();
++        if (!RTUTIL.isInside(allowed,p)) continue;
++        lx = std::min(lx,p.get_x()-reach); ly = std::min(ly,p.get_y()-reach);
++        ux = std::max(ux,p.get_x()+reach); uy = std::max(uy,p.get_y()+reach);
++      }
++    }
++  }
++  if (owned.empty()) return false;
++  PlanarRect search(std::max(lx,allowed.get_ll_x()),std::max(ly,allowed.get_ll_y()),
++                    std::min(ux,allowed.get_ur_x()),std::min(uy,allowed.get_ur_y()));
++  result.set_real_rect(search);
++  result.set_grid_rect(RTUTIL.getOpenGCellGridRect(search,db.get_gcell_axis()));
++  return true;
+ }
+ 
+ void writePAEvidence(PAModel& model)
+@@ -823,6 +923,7 @@
+       RTDM.updateNetAccessPointToGCellMap(ChangeType::kDel, net_idx, access_point);
+     }
+   }
++  std::vector<FailedPin> unreachable;
+   for (PANet& pa_net : pa_model.get_pa_net_list()) {
+     std::vector<PlanarCoord> coord_list;
+     for (PAPin& pa_pin : pa_net.get_pa_pin_list()) {
+@@ -834,13 +935,31 @@
+     bounding_box.set_real_rect(RTUTIL.getBoundingBox(coord_list));
+     bounding_box.set_grid_rect(RTUTIL.getOpenGCellGridRect(bounding_box.get_real_rect(), gcell_axis));
+     for (PAPin& pa_pin : pa_net.get_pa_pin_list()) {
++      int32_t best = -1;
++      AccessPoint* owner = nullptr;
+       for (AccessPoint& access_point : pa_pin.get_access_point_list()) {
+         access_point.set_grid_coord(RTUTIL.getGCellGridCoordByBBox(access_point.get_real_coord(), gcell_axis, bounding_box));
+         RTDM.updateNetAccessPointToGCellMap(ChangeType::kAdd, pa_net.get_net_idx(), &access_point);
+-        pa_pin.get_grid_coord_set().insert(access_point.get_grid_coord());
+-      }
+-    }
+-  }
++        if (useDefTracks()) {
++          int32_t rank = accessRank(access_point);
++          if (rank > best) { best = rank; owner = &access_point; }
++        } else {
++          pa_pin.get_grid_coord_set().insert(access_point.get_grid_coord());
++        }
++      }
++      if (useDefTracks()) {
++        if (owner) {
++          pa_pin.get_grid_coord_set().insert(owner->get_grid_coord());
++        } else {
++          std::ostringstream info;
++          if (unreachable.size()<32) for (auto& ap : pa_pin.get_access_point_list())
++            info << " (" << ap.get_real_coord().get_x() << "," << ap.get_real_coord().get_y() << "," << ap.get_layer_idx() << ")";
++          unreachable.push_back({pa_net.get_net_idx(),pa_pin.get_pin_idx(),info.str()});
++        }
++      }
++    }
++  }
++  reportUnresolved(unreachable);
+   RTLOG.info(Loc::current(), "Completed", monitor.getStatsInfo());
+ }
+ 
+@@ -1027,6 +1146,7 @@
+     total_box_num += pa_box_id_list.size();
+   }
+ 
++  std::vector<FailedPin> unrouted;
+   size_t routed_box_num = 0;
+   for (std::vector<PABoxId>& pa_box_id_list : pa_model.get_pa_box_id_list_list()) {
+     Monitor stage_monitor;
+@@ -1037,7 +1157,9 @@
+       if (useDefTracks()) {
+         // Uploaded routes and selected access points persist in the design model.
+         // Let box-local obstacle maps, shadows and winning-path copies expire here.
+-        working.set_box_rect(scheduled.get_box_rect());
++        EXTPlanarRect search;
++        if (!workingRegion(pa_model,scheduled,search)) continue;
++        working.set_box_rect(search);
+         working.set_pa_box_id(scheduled.get_pa_box_id());
+         working.set_pa_iter_param(scheduled.get_pa_iter_param());
+         working.set_initial_routing(scheduled.get_initial_routing());
+@@ -1059,7 +1181,16 @@
+         exemptPinShape(pa_model, pa_box);
+         // debugCheckPABox(pa_box);
+         // debugPlotPABox(pa_box, "before");
+-        routePABox(pa_box);
++        try {
++          routePABox(pa_box);
++        } catch (const FailedBox& failure) {
++#pragma omp critical(native_pa_failures)
++          {
++            for (const auto& p : failure.pins) unrouted.push_back({p.net,p.pin,unrouted.size()<32 ? p.detail : std::string()});
++          }
++          freePABox(pa_box);
++          continue;
++        }
+         // debugPlotPABox(pa_box, "after");
+       }
+       selectBestResult(pa_box);
+@@ -1070,6 +1201,7 @@
+                getRouteViolationNum(pa_model), " violations", stage_monitor.getStatsInfo());
+   }
+ 
++  reportUnresolved(unrouted);
+   RTLOG.info(Loc::current(), "Completed", monitor.getStatsInfo());
+ }
+ 
+@@ -1132,8 +1264,10 @@
+     }
+     for (auto& [pa_pin, access_point_set] : pin_access_point_map) {
+       bool inside_box = false;
++      auto& id = pa_box.get_pa_box_id();
++      auto& owner_region = useDefTracks() ? pa_model.get_pa_box_map()[id.get_x()][id.get_y()].get_box_rect() : box_rect;
+       for (const PlanarCoord& grid_coord : pa_pin->get_grid_coord_set()) {
+-        if (RTUTIL.isInside(box_rect.get_grid_rect(), grid_coord)) {
++        if (RTUTIL.isInside(owner_region.get_grid_rect(), grid_coord)) {
+           inside_box = true;
+           break;
+         }
+@@ -1683,12 +1817,21 @@
+ {
+   std::vector<PATask*> routing_task_list = initTaskSchedule(pa_box);
+   while (!routing_task_list.empty()) {
++    FailedBox failure;
+     for (PATask* routing_task : routing_task_list) {
+       updateGraph(pa_box, routing_task);
+-      routePATask(pa_box, routing_task);
++      try {
++        routePATask(pa_box, routing_task);
++      } catch (const FailedPin& pin) {
++        resetSinglePath(pa_box);
++        resetSingleRouteTask(pa_box);
++        failure.pins.push_back(pin);
++        continue;
++      }
+       patchPATask(pa_box, routing_task);
+       routing_task->addRoutedTimes();
+     }
++    if (!failure.pins.empty()) throw failure;
+     updateRouteViolationList(pa_box);
+     updateAccessPoint(pa_box);
+     updateBestResult(pa_box);
+@@ -1750,9 +1893,8 @@
+         detail << "(" << ap.get_real_coord().get_x() << "," << ap.get_real_coord().get_y() << "," << ap.get_layer_idx()
+                << ";g" << ap.get_grid_coord().get_x() << "," << ap.get_grid_coord().get_y() << ")";
+       }
+-      RTLOG.error(Loc::current(), "No legal PA path for net=", RTDM.getDatabase().get_net_list().at(pa_task->get_net_idx()).get_net_name(),
+-                  " pin=", pa_task->get_pa_pin()->get_pin_name(), " box=", pa_box.get_pa_box_id().get_x(), ",", pa_box.get_pa_box_id().get_y(),
+-                  detail.str());
++      detail << " owner_box=" << pa_box.get_pa_box_id().get_x() << "," << pa_box.get_pa_box_id().get_y();
++      throw FailedPin{pa_task->get_net_idx(),pa_task->get_pa_pin()->get_pin_idx(),detail.str()};
+     }
+     updatePathResult(pa_box);
+     resetStartAndEnd(pa_box);

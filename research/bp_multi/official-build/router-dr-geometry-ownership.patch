@@ -1,0 +1,93 @@
+--- a/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
++++ b/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
+@@ -30,10 +30,15 @@
+ #include <cstdlib>
+ #include <fstream>
+ #include <string>
++#include <deque>
++#include <mutex>
+ 
+ namespace irt {
+ void saveDetailedBatch(size_t count);
+ namespace {
++std::mutex drGeometryMutex;
++std::mutex drRuleCheckMutex;
++
+ size_t drBatchCursor() {
+   const char* level=std::getenv("IEDA_RT_RESTORE_LEVEL");
+   return level && std::string(level).rfind("D12_",0)==0 ? std::stoul(level+4) : 0;
+@@ -510,12 +515,35 @@
+       dr_box.set_dr_box_id(spec.get_dr_box_id());
+       dr_box.set_dr_iter_param(spec.get_dr_iter_param());
+       dr_box.set_initial_routing(spec.get_initial_routing());
+-      buildFixedRect(dr_box);
+-      buildAccessPoint(dr_box);
+-      buildNetResult(dr_box);
+-      buildNetPatch(dr_box);
+-      initDRTaskList(dr_model, dr_box);
+-      buildRouteViolation(dr_box);
++      // A neighbouring box can remove geometry and destroy the underlying object.
++      // Own copies of the mutable external shapes for the lifetime of this search.
++      std::deque<Segment<LayerCoord>> outside_wires;
++      std::deque<EXTLayerRect> outside_patches;
++      {
++        std::lock_guard<std::mutex> guard(drGeometryMutex);
++        buildFixedRect(dr_box);
++        buildAccessPoint(dr_box);
++        buildNetResult(dr_box);
++        buildNetPatch(dr_box);
++        for(auto& [net, group] : dr_box.get_net_detailed_result_map()) {
++          std::set<Segment<LayerCoord>*> copies;
++          for(auto shape: group) {
++            outside_wires.push_back(*shape);
++            copies.insert(&outside_wires.back());
++          }
++          group.swap(copies);
++        }
++        for(auto& [net, group] : dr_box.get_net_detailed_patch_map()) {
++          std::set<EXTLayerRect*> copies;
++          for(auto shape: group) {
++            outside_patches.push_back(*shape);
++            copies.insert(&outside_patches.back());
++          }
++          group.swap(copies);
++        }
++        initDRTaskList(dr_model, dr_box);
++        buildRouteViolation(dr_box);
++      }
+       if (needRouting(dr_box)) {
+         buildBoxTrackAxis(dr_box);
+         buildLayerNodeMap(dr_box);
+@@ -529,7 +557,7 @@
+         routeDRBox(dr_box);
+         // debugPlotDRBox(dr_box, "after");
+       }
+-      selectBestResult(dr_box);
++      { std::lock_guard<std::mutex> guard(drGeometryMutex); selectBestResult(dr_box); }
+       freeDRBox(dr_box);
+       const auto n=++completed;
+       if(n%64==0)RTLOG.info(Loc::current(),"DR boxes committed ",n,"/",total_box_num);
+@@ -1721,6 +1749,7 @@
+   de_task.set_need_checked_net_set(need_checked_net_set);
+   de_task.set_check_type_set(check_type_set);
+   de_task.set_check_region_list(check_region_list);
++  std::lock_guard<std::mutex> guard(drRuleCheckMutex);
+   return RTDE.getViolationList(de_task);
+ }
+ 
+@@ -2143,6 +2172,7 @@
+   de_task.set_net_result_map(net_result_map);
+   de_task.set_net_patch_map(net_patch_map);
+   de_task.set_need_checked_net_set(need_checked_net_set);
++  std::lock_guard<std::mutex> guard(drRuleCheckMutex);
+   return RTDE.getViolationList(de_task);
+ }
+ 
+@@ -2396,6 +2426,7 @@
+     de_task.set_net_patch_map(net_patch_map);
+     de_task.set_need_checked_net_set(need_checked_net_set);
+   }
++  std::lock_guard<std::mutex> guard(drRuleCheckMutex);
+   return RTDE.getViolationList(de_task);
+ }
+ 

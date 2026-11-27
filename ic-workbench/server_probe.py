@@ -1,12 +1,14 @@
 """Read-only workbench probe. The host supplies a trusted catalog and optional selection."""
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
 CATALOG = []  # injected on the host
 SELECTED = None  # injected on the host
+LIVE_ONLY = False
 BENCHMARKS = Path("/srv/benchmarks/iBench/benchmarks")
 
 
@@ -63,15 +65,16 @@ else:
     from macro_agent.ieda_stages import REGISTERED_CASES, input_files
     from macro_agent.swerv_screening import active_jobs
 
-    packages = [p["id"] for p in CATALOG if available(p)]
-    for case in REGISTERED_CASES:
+    known_case_ids={p["id"] for p in CATALOG}|set(REGISTERED_CASES)
+    packages = [] if LIVE_ONLY else [p["id"] for p in CATALOG if available(p)]
+    for case in (() if LIVE_ONLY else REGISTERED_CASES):
         try:
             if all(p.is_file() for p in input_files(case)):
                 packages.append(case)
         except (OSError, ValueError):
             continue
     readiness = {}
-    for case in CATALOG:
+    for case in (() if LIVE_ONLY else CATALOG):
         case_id = case["id"]
         if case["pdk"] == "ics55":
             readiness[case_id] = "等待 ICS55 工艺库授权"
@@ -114,12 +117,60 @@ else:
     from macro_agent.case_readiness import ready
     runnable=[]
     certificates={}
-    for case_id in REGISTERED_CASES:
+    for case_id in (() if LIVE_ONLY else REGISTERED_CASES):
         try:
             certificate=ready(case_id)
             runnable.append(case_id)
             certificates[case_id]=certificate
         except (OSError,ValueError,KeyError):
             continue
+    from macro_agent.remote_native import identity
+    qualification_jobs=[]
+    for handle in Path("runs").glob("bringup-*/attempt-*/handles/*.json"):
+        try:
+            worker=json.loads(handle.read_bytes())
+            if Path("/proc",str(worker["pid"])).stat().st_uid!=os.getuid():
+                continue
+            if identity(worker["pid"])!=worker["start_ticks"]:
+                continue
+            work=handle.parent.parent
+            manifest=json.loads((work/"manifest.json").read_bytes())
+            source=(work/"stage.tcl").read_text()
+            stage=re.search(r"SWERV_STAGE_OK (\w+)",source)
+            qualification_jobs.append({"case_id":manifest["case_id"],"stage":stage[1] if stage else "native",
+                                       "kind":"qualification"})
+        except (OSError,ValueError,KeyError):
+            continue
+    for handle in Path("runs").glob("*/qualification-live.json"):
+        try:
+            worker = json.loads(handle.read_bytes())
+            pid = worker["pid"]
+            if type(pid) is not int or not worker.get("start_ticks") or identity(pid) != worker["start_ticks"]:
+                continue
+            if worker["case_id"] not in known_case_ids:
+                continue
+            job = {"case_id":worker["case_id"], "stage":worker["stage"], "kind":"qualification"}
+            try:
+                stream_path = under(handle.parent.resolve(), Path(worker["run"])/"result/rt/rt.log")
+                with stream_path.open("rb") as stream:
+                    stream.seek(max(0, stream_path.stat().st_size-65536))
+                    lines = stream.read(65536).decode(errors="replace").splitlines()
+                for line in reversed(lines):
+                    batch = re.search(r"(\w+)\.cpp:\d+ Info \w+\] (?:Routed|Assigned) (\d+)/(\d+)\([^)]*\) (boxes|nets|panels)\b", line)
+                    completed=re.search(r"DetailedRouter\.cpp:\d+ Info \w+\] DR boxes committed (\d+)/(\d+)",line)
+                    if completed:
+                        job["progress"]=dict(module="DetailedRouter",done=int(completed[1]),total=int(completed[2]),unit="boxes")
+                        break
+                    if batch:
+                        job["progress"] = dict(module=batch[1], done=int(batch[2]), total=int(batch[3]), unit=batch[4])
+                        break
+                    if re.search(r"\.cpp:\d+ Info \w+\] \*+ Begin iteration", line, re.I):
+                        break
+            except (OSError, ValueError, KeyError):
+                pass
+            qualification_jobs.append(job)
+        except (OSError, ValueError, KeyError):
+            continue
     print(json.dumps(dict(online=runtime_status()["available"], cases=packages, jobs=len(active_jobs()),
-                         readiness=readiness,runnable_cases=runnable,qualifications=certificates)))
+                         readiness=readiness,runnable_cases=runnable,qualifications=certificates,
+                         qualification_jobs=qualification_jobs)))

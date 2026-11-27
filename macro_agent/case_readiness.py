@@ -10,6 +10,19 @@ REQUIRED = {"import_netlist","floorplan","fanout","placement","validate","export
             "gds_export","routed_readback"}
 
 
+def fits_budget(state, budget):
+    """An extended historical run does not qualify a shorter default profile."""
+    used=state["contract"]["budget"]
+    for key in ("cpu_threads","memory_gb"):
+        if used.get(key)!=budget.get(key):
+            return False
+    for key in ("container_seconds","host_seconds","routing_seconds"):
+        if key in used and used[key]>budget.get(key,budget.get("container_seconds",0)):
+            return False
+    elapsed=sum(result.get("seconds",0) for result in state["results"].values())
+    return elapsed<=budget["wall_seconds"]
+
+
 def ready(case_id):
     from .catalog_backend import CASES, require_qualification
     if case_id in CASES:
@@ -26,7 +39,9 @@ def ready(case_id):
         return {"qualified":True,"goal":"full_backend","evidence":receipt["evidence"],
                 "source":"aes_native_baseline"}
     # Retain explicit production task proof for older registered GCD and SWERV.
-    current = [p for p in ieda_stages.input_files(case_id) if p.suffix in (".v",".lef",".tlef",".sdc",".lib")]
+    from .full_backend import for_case
+    backend=for_case(case_id)
+    current=backend.input_files()
     for path in sorted((ROOT/"runs").glob("remote-*/acceptance.json")):
         try:
             state=json.loads((path.parent/"task.json").read_bytes())
@@ -35,6 +50,8 @@ def ready(case_id):
                 continue
             acceptance=json.loads(path.read_bytes())
             if not acceptance.get("case_run_passed") or not acceptance.get("full_backend_workflow_completed"):
+                continue
+            if not fits_budget(state,backend.manifest()["budget"]):
                 continue
             frozen={r["path"]:r["sha256"] for r in state["input_refs"]}
             if any(frozen.get(str(p))!=sha(p) for p in current):

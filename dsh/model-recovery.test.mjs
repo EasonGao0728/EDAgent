@@ -19,3 +19,12 @@ test('stream, auth and permanent network failures never loop indefinitely',async
     assert.equal(invoked,expected);
   }
 });
+
+test('known upstream outages get bounded model-only recovery, unknown stream failures stay paused',async()=>{
+  for(const [code,httpStatus,expected] of [['server_error',null,3],['remote_error',503,3],['remote_error',null,1],['remote_error',400,1]]){
+    const retries=[];let invoked=0;
+    await assert.rejects(modelWithRecovery({beforeAttempt:async()=>{},invoke:async()=>{invoked++;throw Object.assign(Error(code),{code,httpStatus});},
+      onRetry:async e=>retries.push(e.nextAttempt),pause:async()=>{}}));
+    assert.equal(invoked,expected);assert.deepEqual(retries,expected===3?[2,3]:[]);
+  }
+});

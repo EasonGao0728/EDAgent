@@ -53,7 +53,7 @@ def clock(sdc):
     return name,port
 
 
-def prepare(project,bench,pdks,case,receipt_dir,ref,stage_engine,floorplan_scale=1.0):
+def prepare(project,bench,pdks,case,receipt_dir,ref,stage_engine,floorplan_scale=1.0,hold_guard=False,cts_wirelength_unit_um=None,drv_iterations=None):
     from macro_agent.aes_netlist import verify
     from macro_agent.def_validation import read_def
     row=resolve_inputs(case,bench,project,pdks)
@@ -100,6 +100,8 @@ def prepare(project,bench,pdks,case,receipt_dir,ref,stage_engine,floorplan_scale
             die[axis+2]=round(core[axis+2]+margin,6)
         m["floorplan_adaptation"]={"scale":floorplan_scale,"original":original,
                                   "reason":"Native macro placement needs additional legal packing space"}
+    if hold_guard:
+        m['hold_compatibility_guard']='f881cd0b0118bbfdab115a1cd793f18a666a6148da0a755eb591851c88df6abd'
     cells,buses=stage_engine.cells_and_buses(ref,m)
     proof=verify(ref/m["netlist"],receipt_dir/"import.def",buses)
     if not proof["passed"]:raise ValueError("source endpoint mismatch "+str(proof["errors"]))
@@ -111,11 +113,22 @@ def prepare(project,bench,pdks,case,receipt_dir,ref,stage_engine,floorplan_scale
         (ref/"tools").mkdir()
         shutil.copy2(template/"tools/hmetis2.0pre1",ref/"tools/hmetis2.0pre1")
     shutil.copytree(template/"config",ref/"config")
+    if cts_wirelength_unit_um is not None:
+        if not math.isfinite(cts_wirelength_unit_um) or cts_wirelength_unit_um <= 0:
+            raise ValueError("CTS characterization wirelength unit must be positive and finite")
+        cfg=ref/"config/cts_default_config.json"
+        settings=json.loads(cfg.read_bytes())
+        settings["wirelength_unit_um"]=cts_wirelength_unit_um
+        cfg.write_text(json.dumps(settings,indent=2))
     for cfg in (ref/"config").glob("*.json"):
         value=json.loads(cfg.read_bytes())
         files=value.get("file_path",{})
         if files:
             files.update(lib_files=["/reference/"+k for k in m["libs"]],lef_files=["/reference/"+k for k in [m["tech_lef"],*m["cell_lefs"]]],sdc_file="/reference/"+m["sdc"])
+            if cfg.name=="to_default_config_drv.json" and drv_iterations is not None:
+                if not 1 <= drv_iterations <= value["drv_optimize_iter_number"]:
+                    raise ValueError("DRV trial iterations must be within the reference budget")
+                value["drv_optimize_iter_number"]=drv_iterations
             if not macros and files.get("def_file")=="/work/result/macro_placement.def":files["def_file"]="/work/result/floorplan.def"
             cfg.write_text(json.dumps(value,indent=2))
     (ref/"manifest.json").write_text(json.dumps(m,indent=2))
@@ -156,7 +169,7 @@ def main(args):
         (work/"handles").mkdir(exist_ok=True)
         os.environ["AIEDA_NATIVE_HANDLES"]=str(work/"handles")
         with tempfile.TemporaryDirectory(dir=parent,prefix="refs-") as tmp:
-            ref=Path(tmp);m=prepare(project,args.benchmarks,args.pdks,case,imported,ref,engine,args.floorplan_scale)
+            ref=Path(tmp);m=prepare(project,args.benchmarks,args.pdks,case,imported,ref,engine,args.floorplan_scale,args.hold_guard,args.cts_wirelength_unit_um,args.drv_iterations)
             stages=[s for s in engine.STAGES if s!="import_netlist" and (s!="macro_placement" or case["macros"])]
             binding={str(p.relative_to(ref)):digest(p) for p in ref.rglob("*") if p.is_file()}
             binding["import.def"]=digest(imported/"import.def")
@@ -165,6 +178,25 @@ def main(args):
             if args.resume:
                 saved=json.loads(previous[0].read_bytes())
                 completed=saved["completed"]
+                if binding!=saved['binding'] and args.hold_guard:
+                    old_manifest=json.loads((work/'manifest.json').read_bytes())
+                    expected=dict(old_manifest,hold_compatibility_guard=m['hold_compatibility_guard'])
+                    changed={k for k in binding.keys()|saved['binding'].keys() if binding.get(k)!=saved['binding'].get(k)}
+                    # Explicit tool substitution at the failed hold boundary;
+                    # other sources and every accepted stage remain frozen.
+                    if (m!=expected or changed!={'manifest.json','stage_engine'}
+                        or completed!=stages[:stages.index('to_hold')]
+                        or saved['binding']['stage_engine']!='bd0dc6b759815f79484bcd2b6efe5854bbbd450aac1e8f2fd61bac4f673a55c8'
+                        or digest(args.candidate)!=digest(project/'macro_agent/swerv_backend.py')):
+                        raise ValueError('Unreviewed hold compatibility amendment')
+                    amendment=work/'hold-guard-amendment.json'
+                    if amendment.exists():raise ValueError('Hold amendment already exists')
+                    shutil.copy2(previous[0],work/'progress-before-hold-guard.json')
+                    shutil.copy2(work/'manifest.json',work/'manifest-before-hold-guard.json')
+                    amendment.write_text(json.dumps({'old_binding':saved['binding'],'new_binding':binding,
+                        'preserved_completed':completed,'scope':'Existing isolated hold divisor guard; default stages unchanged'},indent=2))
+                    (work/'manifest.json').write_text(json.dumps(m,indent=2))
+                    saved['binding']=binding
                 if (binding!=saved["binding"] or completed!=stages[:len(completed)]
                     or digest(work/"result/import_netlist.def")!=binding["import.def"]):
                     raise ValueError("checkpoint identity or stage ordering changed")
@@ -214,5 +246,8 @@ if __name__=="__main__":
     parser.add_argument("--io-adapter",type=Path,help="Reviewed equivalent IO adapter, recorded as a checkpoint amendment")
     parser.add_argument("--variant",default="",help="Preserve a distinct qualification branch")
     parser.add_argument("--floorplan-scale",type=float,default=1.0)
+    parser.add_argument('--hold-guard',action='store_true',help='Explicitly qualify the existing pinned hold division guard')
+    parser.add_argument('--cts-wirelength-unit-um',type=int,help='Native iCTS wirelength characterization interval in microns')
+    parser.add_argument('--drv-iterations',type=int,help='Stop the native design-rule repair after this many iterations')
     parser.add_argument("case")
     main(parser.parse_args())

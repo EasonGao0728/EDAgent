@@ -87,3 +87,19 @@ test('standalone older branch reply retains identity after campaign advances',()
   const tool=JSON.parse(result.messages.find(m=>m.role==='tool').content[0].text);
   assert.equal(tool.branches[0].state_id,'before');assert.equal(tool.details_archive,'archive');
 });
+
+test('large historical search results leave the current DRC evidence, contract and latest tool exchange intact',()=>{
+  const task={state_id:'current',contract:{goal:'full_backend'},latest_evidence:{drc_gate:{rules:{short:17},passed:false}}};
+  const ctx={schema_version:'aieda_decision_context_v1',sections:{current_facts:{task},retrieved_knowledge:{items:[
+    {receipt_id:'original',tool:'mp_tools_search',data:{query:'routing',candidates:[{id:'routing',description:'x'.repeat(65000)}]}}]}}};
+  const history=[{id:'request',role:'user',content:[{type:'text',text:'继续'}]},
+    {role:'assistant',content:[{type:'tool-call',id:'latest',name:'mp_task_act',arguments:'{}'}]},
+    {role:'tool',toolCallId:'latest',content:[{type:'text',text:'{"drc":17}'}]},
+    {role:'user',source:{kind:'runtime-context'},content:[{type:'text',text:TASK_MARKER+JSON.stringify(ctx)}]}];
+  const {messages}=compactMessages(history,'immutable-assembly.jsonl');
+  const result=JSON.parse(messages.at(-1).content[0].text.slice(TASK_MARKER.length));
+  assert.deepEqual(result.sections.current_facts.task,task);
+  assert.deepEqual(result.sections.retrieved_knowledge.items[0].card_ids,['routing']);
+  assert.equal(result.sections.retrieved_knowledge.items[0].full_result_archive,'immutable-assembly.jsonl');
+  assert.ok(messages.some(m=>m.toolCallId==='latest'));assert.ok(JSON.stringify(messages).length<64000);
+});

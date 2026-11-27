@@ -20,11 +20,15 @@ def implementation():
 
 def store(folder):
     p = Path(folder)/'main-decisions.json'
-    return task.load(p) if p.exists() else {
+    if p.exists():return task.load(p)  # Existing counters and limits never reset.
+    contract=Path(folder)/'task.json'
+    limit=task.load(contract).get('contract',{}).get('budget',{}).get('model_calls',40) if contract.exists() else 40
+    if type(limit) is not int or limit<1:raise ValueError('Invalid contract model budget')
+    return {
         'schema_version': VERSION, 'revision': 0, 'plans': [], 'observations': [],
         'events': [], 'status': 'open', 'created_at': time.time(),
         'budget': {'decisions': 16, 'experiments': 1, 'wall_seconds': 7200},
-        'experiments': 0, 'model_calls': 0, 'model_call_limit': 40,
+        'experiments': 0, 'model_calls': 0, 'model_call_limit': limit,
         'workflow_gates_enabled': False}
 
 

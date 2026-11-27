@@ -13,11 +13,20 @@ export const taskToolNames=['mp_task_start','mp_task_observe','mp_task_resume','
 taskToolNames.push('mp_feedback_begin','mp_feedback_status','mp_feedback_inspect','mp_feedback_branch','mp_feedback_continue','mp_feedback_compare','mp_feedback_report','mp_feedback_stop');
 taskToolNames.push('mp_local_inspect','mp_local_plan','mp_local_execute','mp_local_status');
 taskToolNames.push('mp_quality_inspect','mp_quality_execute');
-taskToolNames.push('mp_tools_search','mp_tools_load','mp_agent_subgoal','mp_agent_reflect');
+taskToolNames.push('mp_tools_search','mp_tools_load','mp_agent_subgoal','mp_agent_reflect','mp_bp_multi_route','mp_bp_multi_quality');
 export function taskRun(agent){
   const id=agent?.session?.id;
   if(!id)throw Error('DSH session identity missing');
   return path.join(root,'runs','dsh-desktop-'+createHash('sha256').update(id).digest('hex').slice(0,16),'main-task');
+}
+// This optional path requires an explicit model decision to both plan and run.
+export async function executeNativePlan(plan,run,signal,invoke=bridge){
+  if(plan?.status!=='planned'||!plan.tool_card?.native_stage)return plan;
+  if(!/^plan-[0-9a-f]{24}$/.test(plan.plan_id))throw Error('Invalid approved plan identity');
+  signal?.throwIfAborted();
+  const value=await invoke({mode:'task',operation:'decision_execute',run,plan_id:plan.plan_id,
+    action_id:plan.plan_id+'-execute'},signal);
+  return {...value,approved_plan:{plan_id:plan.plan_id,stage:plan.tool_card.native_stage,evidence_id:plan.evidence_id}};
 }
 export function registerTaskTools(ctx){
   const pending=new WeakMap();
@@ -35,6 +44,10 @@ export function registerTaskTools(ctx){
     return value;
   }});
   const output={schema:{type:'json'},render:(_a,v)=>[{type:'text',text:JSON.stringify(v)}]};
+  register(defineTool({name:'mp_bp_multi_quality',description:'对已交付的 bp_multi 在服务器诊断金属短路、生成单网局部候选、独立复验。repair 必须绑定 diagnose 返回的 proposal_id。status 查询同一作业及接受或回退证据。',parameters:{action:{type:'string',enum:['diagnose','repair','status'],required:true},proposal_id:{type:'string'}},output,
+    execute:(args,exec)=>bridge({mode:'task',operation:'bp_multi_quality',run:taskRun(exec.agent),...args},exec.signal)}));
+  register(defineTool({name:'mp_bp_multi_route',description:'查询、续接或交付 bp_multi 的服务器路由资格作业。status 返回当前尝试与可用检查点。start 接回活动作业；中断后根据服务器返回的 resume_available 从已核验的检查点恢复，保留上游凭据。首次启动使用冻结的合法化 DEF。delivery 核验并下载最终产物。',parameters:{action:{type:'string',enum:['status','start','delivery'],required:true}},output,
+    execute:(args,exec)=>bridge({mode:'task',operation:'bp_multi_route',run:taskRun(exec.agent),action:args.action},exec.signal)}));
   register(defineTool({name:'mp_tools_search',description:'检索工具库；stage只能使用所列枚举，不确定时省略。按阶段过滤、embedding/关键词召回少量候选，自动加载候选定义到下一轮。相似度不是成功率，调用前仍须核对当前任务资格；没有工具时报告缺口，不启动Tool Maker。',parameters:{query:{type:'string',required:true},stage:{type:'string',enum:catalog().stages},top_k:{type:'number'}},output,async execute(args,exec){
     const result=await searchTools(args.query,{stage:args.stage,topK:args.top_k??5});
     if(result.candidates.length)result.loaded=await loadTools(taskRun(exec.agent),result.candidates.map(c=>c.id),'retrieval: '+args.query);
@@ -69,7 +82,7 @@ export function registerTaskTools(ctx){
     ['mp_task_open','open','打开用户指定的已完成远程任务。只复盘既有证据用purpose=evidence_review：本会话20次模型调用/1小时，接口禁止执行、改参、取消及重新绑定，不改变旧审查预算。需要实际新质量实验才用quality_review；它不会续期已过期的历史审查预算。',{task_id:{type:'string',required:true},purpose:{type:'string',enum:['quality_review','evidence_review']}}],
     ['mp_task_inspect','decision_inspect','读取当前事实或有来源的历史证据，返回可供计划引用的 evidence_id。local_short 是同一父DEF的局部几何，prior_comparison 是已做过的对照，不会重复布线。terminals 与 route_branches 用 name 指定网络，支持续页。episodes 为同案例同后端版本的历史经验，不能当当前测量。',{kind:{type:'string',enum:['summary','terminals','tracks','blockages','route_branches','local_short','prior_comparison','experiment_result','episodes'],required:true},name:{type:'string'},cursor:{type:'number'},limit:{type:'number'}}],
     ['mp_task_choices','decision_catalog','按当前状态、范围、证据与预算给出合格工具卡；主Agent负责选择，不由宿主替模型排名。',{}],
-    ['mp_task_plan','decision_plan','主Agent提交结构化选择：工具、当前证据、依据、预期效果和未知项。宿主拒绝过期证据及不合格工具。预期效果只是待验证假设。',{decision_state_id:{type:'string',required:true},tool_id:{type:'string',required:true},evidence_id:{type:'string',required:true},reason:{type:'string',required:true},expected_effect:{type:'string',required:true},uncertainties:{type:'string',required:true}}],
+    ['mp_task_plan','decision_plan','主Agent提交结构化选择：工具、当前证据、依据、预期效果和未知项。宿主拒绝过期证据及不合格工具。明确要立即执行选中的原生阶段时，可设置 execute_native=true。宿主用同一 plan_id 和既有执行门禁提交一次持久作业；省略时仅保存计划。',{execute_native:{type:'boolean'},decision_state_id:{type:'string',required:true},tool_id:{type:'string',required:true},evidence_id:{type:'string',required:true},reason:{type:'string',required:true},expected_effect:{type:'string',required:true},uncertainties:{type:'string',required:true}}],
     ['mp_task_execute_plan','decision_execute','执行已选择的计划。原生iEDA只在服务器持久作业中运行，返回job_id后结束当前轮等待结果；只读工具直接返回结果。实验不覆盖生产结果，不重跑已完成阶段。',{plan_id:{type:'string',required:true}}],
     ['mp_task_cancel_plan','decision_cancel','取消尚未执行的计划以便重新选择；运行中任务必须用job_cancel。',{plan_id:{type:'string',required:true},reason:{type:'string',required:true}}],
     ['mp_task_decision_report','decision_report','生成可下载的主Agent感知、选择、工具执行和质量反馈轨迹报告，不声明整体P1通过。随后download显示交付卡片。',{}],
@@ -77,7 +90,7 @@ export function registerTaskTools(ctx){
     ['mp_task_job_status','job_status','查询服务器持久作业及已验收阶段。运行中不要循环调用模型轮询；向用户报告 job_id，稍后查询。completed 只表示作业完成，只有 task.goal_certified=true 才表示案例目标完成。',{job_id:{type:'string',required:true}}],
     ['mp_task_job_cancel','job_cancel','用户明确要求停止时取消本任务指定的服务器作业，保留日志、已验收阶段和未完成阶段的 pending 证据。不会停止其他用户或其他任务。',{job_id:{type:'string',required:true},reason:{type:'string',required:true}}],
     ['mp_task_download','download','目标已验收后下载服务器最终报告、版图预览、DEF、可用的GDS及网表；逐文件校验SHA256并显示本地交付卡片。',{}],
-    ['mp_task_start','start','冻结用户明确选择的登记网表和工艺/约束，创建服务器任务并返回真实合同、阶段依赖、资源预算、支持范围与输入感知报告。只支持枚举中的已登记案例；full_backend是否合格由当前服务器门禁决定，不按历史提示推断。输入不匹配不得绕过；Maker关闭，禁止本地Docker或其他EDA回退。',{case_id:{type:'string',enum:['sky130_gcd','ibench_gcd_legacy','sky130_sram_pair','aes_sky130_t','aes_legacy','aes_core_sky130_t','swerv_nangate45','bp_fe','s35932_nangate45_t'],required:true},goal:{type:'string',enum:['placement_def','routed_def','full_backend']}}],
+    ['mp_task_start','start','冻结用户明确选择的登记网表和工艺/约束，创建服务器任务并返回真实合同、阶段依赖、资源预算、支持范围与输入感知报告。只支持枚举中的已登记案例；full_backend是否合格由当前服务器门禁决定，不按历史提示推断。输入不匹配不得绕过；Maker关闭，禁止本地Docker或其他EDA回退。',{case_id:{type:'string',enum:['sky130_gcd','ibench_gcd_legacy','sky130_sram_pair','aes_sky130_t','aes_legacy','aes_core_sky130_t','swerv_nangate45','bp_fe','s35932_nangate45_t','tinyram'],required:true},goal:{type:'string',enum:['placement_def','routed_def','full_backend']}}],
     ['mp_task_observe','observe','读取当前事实、计划、允许动作和预算；也用于断点恢复。',{}],
     ['mp_task_resume','resume','用户要求继续、基础设施问题已修复后，从明确停止的已验收检查点继续。宿主核验全部冻结输入与历史阶段凭据、剩余原预算、磁盘容量及无在途原生作业。不会重置预算、修改验收门槛或把失败阶段记为完成；下一步仍是首个未完成阶段。不能用于绕过用户停止指令或额度限制。',{state_id:{type:'string',required:true},reason:{type:'string',required:true}}],
     ['mp_task_act','act','向服务器提交一个允许阶段，返回持久 job_id；用 job_status 获取结果。禁止跳步；finish 只有回读验证通过才认证目标，之后 download 获取本地交付。',{
@@ -95,8 +108,10 @@ export function registerTaskTools(ctx){
     register(defineTool({name,description,parameters,output,async execute(args,exec){
       exec.signal?.throwIfAborted();
       const attachment_inputs=operation==='start'?await conversationAttachments(ctx,exec.agent):undefined;
-      const value=await bridge({mode:'task',operation,run:taskRun(exec.agent),action_id:exec.callId,...args,
+      const {execute_native,...planArgs}=operation==='decision_plan'?args:{};
+      const value=await bridge({mode:'task',operation,run:taskRun(exec.agent),action_id:exec.callId,...(operation==='decision_plan'?planArgs:args),
         ...(attachment_inputs===undefined?{}:{attachment_inputs})},exec.signal);
+      if(operation==='decision_plan'&&execute_native===true)return executeNativePlan(value,taskRun(exec.agent),exec.signal);
       if(operation==='start'||(operation==='feedback_inspect'&&['input','quality'].includes(args.kind))){
         const kind=operation==='start'?'input':args.kind;
         try{

@@ -1,0 +1,91 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -188,12 +188,39 @@
+   }
+ }
+ 
++
++// A pin escape file describes actual wires, not virtual extensions of LEF pins.
++// The runner binds a frozen, DRC-measured list for this checkpoint only.
++struct Escape { int x, y, a, b; std::string net; };
++const Escape* escapeFor(PAPin* pin)
++{
++  static const auto escapes = [] {
++    std::map<std::string,Escape> result;
++    if (auto path = std::getenv("IEDA_RT_PA_ESCAPE_FILE")) {
++      std::ifstream stream(path);
++      std::string name, net;
++      Escape e;
++      while (stream >> net >> name >> e.x >> e.y >> e.a >> e.b) {
++        e.net = net;
++        if (!result.emplace(name,e).second) RTLOG.error(Loc::current(),"Duplicate pin escape ",name);
++      }
++      if (!stream.eof() || result.empty()) RTLOG.error(Loc::current(),"Invalid pin escape file");
++    }
++    return result;
++  }();
++  auto it=escapes.find(pin->get_pin_name());
++  return it==escapes.end() ? nullptr : &it->second;
++}
++
+ std::vector<LayerCoord> nativeTargets(PAPin* pin)
+ {
+   auto& layers = RTDM.getDatabase().get_routing_layer_list();
+   int32_t bottom = RTDM.getConfig().bottom_routing_layer_idx;
+   int32_t top = RTDM.getConfig().top_routing_layer_idx;
+   std::vector<LayerCoord> result;
++  if (auto e = escapeFor(pin)) {
++    return {LayerCoord(e->a,e->b,pin->get_access_point_list().at(0).get_layer_idx())};
++  }
+   for (auto& access : pin->get_access_point_list()) {
+     auto current = access.get_layer_idx();
+     int32_t target = std::clamp(current, bottom, top);
+@@ -495,6 +522,20 @@
+       access_point_list.push_back(access_point);
+     }
+     if (useDefTracks()) addEnclosedLanding(pa_pin, net_pin_pair.first, pa_model.get_pa_com_param().get_max_candidate_point_num());
++    if (auto e = escapeFor(pa_pin)) {
++      auto& shapes = pa_pin->get_routing_shape_list();
++      if (shapes.size()!=1) RTLOG.error(Loc::current(),"Pin escape shape changed");
++      auto& r = shapes.front().get_real_rect();
++      int l=shapes.front().get_layer_idx();
++      auto& layer=RTDM.getDatabase().get_routing_layer_list().at(l);
++      int w=layer.get_min_width();
++      if (RTDM.getDatabase().get_net_list().at(net_pin_pair.first).get_net_name()!=e->net
++          || layer.get_layer_name()!="metal3" || r.get_ll_x()!=e->x || r.getXSpan()!=w
++          || r.getYSpan()!=w || r.get_ll_y()+w/2!=e->y || e->a>=e->x || e->b==e->y
++          || !onPreferredTrack(LayerCoord(e->a,e->b,l))) RTLOG.error(Loc::current(),"Pin escape geometry changed: ",pa_pin->get_pin_name());
++      access_point_list.clear();
++      access_point_list.emplace_back(pa_pin->get_pin_idx(),LayerCoord(e->x,e->y,l));
++    }
+     std::sort(access_point_list.begin(), access_point_list.end(),
+               [](AccessPoint& a, AccessPoint& b) { return CmpLayerCoordByXASC()(a.getRealLayerCoord(), b.getRealLayerCoord()); });
+     if (access_point_list.empty()) {
+@@ -941,7 +982,7 @@
+         access_point.set_grid_coord(RTUTIL.getGCellGridCoordByBBox(access_point.get_real_coord(), gcell_axis, bounding_box));
+         RTDM.updateNetAccessPointToGCellMap(ChangeType::kAdd, pa_net.get_net_idx(), &access_point);
+         if (useDefTracks()) {
+-          int32_t rank = accessRank(access_point);
++          int32_t rank = escapeFor(&pa_pin) ? 1 : accessRank(access_point);
+           if (rank > best) { best = rank; owner = &access_point; }
+         } else {
+           pa_pin.get_grid_coord_set().insert(access_point.get_grid_coord());
+@@ -1874,6 +1915,18 @@
+ void PinAccessor::routePATask(PABox& pa_box, PATask* pa_task)
+ {
+   initSingleRouteTask(pa_box, pa_task);
++  if (auto e=escapeFor(pa_task->get_pa_pin())) {
++    auto& groups=pa_task->get_pa_group_list();
++    auto p=groups.at(0).get_coord_list().at(0);
++    LayerCoord a(e->a,e->y,p.get_layer_idx()), b(e->a,e->b,p.get_layer_idx());
++    if (groups.at(1).get_coord_list().size()!=1 || !(groups.at(1).get_coord_list().front()==b)
++        || p.get_x()!=e->x || p.get_y()!=e->y) RTLOG.error(Loc::current(),"Incomplete PA escape groups");
++    pa_box.get_routing_segment_list().emplace_back(p,a);
++    pa_box.get_routing_segment_list().emplace_back(a,b);
++    updateTaskResult(pa_box);
++    resetSingleRouteTask(pa_box);
++    return;
++  }
+   while (!isConnectedAllEnd(pa_box)) {
+     routeSinglePath(pa_box);
+     if (useDefTracks() && (pa_box.get_path_head_node() == nullptr || pa_box.get_end_node_list_idx() < 0)) {

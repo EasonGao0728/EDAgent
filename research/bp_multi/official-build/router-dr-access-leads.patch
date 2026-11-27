@@ -1,0 +1,116 @@
+--- a/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
++++ b/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
+@@ -28,11 +28,66 @@
+ #include "RTInterface.hpp"
+ 
+ #include <cstdlib>
++#include <fstream>
+ #include <string>
+ 
+ namespace irt {
+ 
+ namespace {
++// Preserve the physical pin-to-track conductors already measured by PA.
++struct DRAccessLead {
++  int pin, layer, x, y, a, b;
++  bool owns(const Segment<LayerCoord>& segment) const {
++    const auto& p=segment.get_first();
++    const auto& q=segment.get_second();
++    if (p.get_layer_idx()!=layer || q.get_layer_idx()!=layer || p==q) return false;
++    auto inside=[](int v,int u,int w){return std::min(u,w)<=v && v<=std::max(u,w);};
++    return (p.get_y()==y && q.get_y()==y && inside(p.get_x(),a,x) && inside(q.get_x(),a,x))
++        || (p.get_x()==a && q.get_x()==a && inside(p.get_y(),y,b) && inside(q.get_y(),y,b));
++  }
++};
++
++const std::map<int,std::vector<DRAccessLead>>& drAccessLeads()
++{
++  static const auto leads=[]{
++    std::map<int,std::vector<DRAccessLead>> result;
++    const char* path=std::getenv("IEDA_RT_PA_ESCAPE_FILE");
++    if(!path) return result;
++    std::ifstream f(path);
++    std::map<std::string,int> net_ids;
++    auto& db=RTDM.getDatabase();
++    auto& nets=db.get_net_list();
++    for(auto& net:nets) net_ids.emplace(net.get_net_name(),net.get_net_idx());
++    auto segments=RTDM.getNetDetailedResultMap(db.get_die());
++    std::string net,terminal;
++    int x,y,a,b;
++    while(f>>net>>terminal>>x>>y>>a>>b) {
++      int ni=net_ids.at(net);
++      auto& pins=nets.at(ni).get_pin_list();
++      auto pin=std::find_if(pins.begin(),pins.end(),[&](auto& p){return p.get_pin_name()==terminal;});
++      if(pin==pins.end()) throw std::runtime_error("missing DR access pin");
++      auto p=pin->get_access_point().getRealLayerCoord();
++      int l=p.get_layer_idx();
++      if(p.get_x()!=x || p.get_y()!=y || a>=x || b==y || db.get_routing_layer_list().at(l).get_layer_name()!="metal3")
++        throw std::runtime_error("DR access endpoint differs from PA");
++      LayerCoord corner(a,y,l),anchor(a,b,l);
++      auto contains=[&](const LayerCoord& u,const LayerCoord& v){
++        for(auto s:segments.at(ni)){
++          auto& first=s->get_first();auto& second=s->get_second();
++          if((first==u && second==v) || (first==v && second==u)) return true;
++        }
++        return false;
++      };
++      if(!contains(p,corner) || !contains(corner,anchor))
++        throw std::runtime_error("missing physical pin-to-track lead before DR: "+terminal);
++      result[ni].push_back({pin->get_pin_idx(),l,x,y,a,b});
++    }
++    if(!f.eof() || result.empty()) throw std::runtime_error("invalid DR access lead list");
++    return result;
++  }();
++  return leads;
++}
++
+ bool nativeTrackGraph()
+ {
+   static const bool enabled = [] {
+@@ -73,6 +128,7 @@
+ 
+ void DetailedRouter::route()
+ {
++  drAccessLeads(); // Validate native PA geometry before the first box splits its wires.
+   Monitor monitor;
+   RTLOG.info(Loc::current(), "Starting...");
+   DRModel dr_model = initDRModel();
+@@ -440,7 +496,11 @@
+           least_one_coord_in_box = true;
+         }
+       }
+-      if (least_one_coord_in_box) {
++      const auto& leads=drAccessLeads();
++      auto lead=leads.find(net_idx);
++      bool fixed_access=lead!=leads.end() && std::any_of(lead->second.begin(),lead->second.end(),
++          [&](const auto& l){return l.owns(*segment);});
++      if (least_one_coord_in_box && !fixed_access) {
+         dr_box.get_net_task_detailed_result_map()[net_idx].push_back(*segment);
+         RTDM.updateNetDetailedResultToGCellMap(ChangeType::kDel, net_idx, segment);
+       } else {
+@@ -478,6 +538,15 @@
+   std::map<int32_t, std::vector<Segment<LayerCoord>>>& net_task_detailed_result_map = dr_box.get_net_task_detailed_result_map();
+ 
+   std::map<int32_t, std::vector<DRGroup>> net_group_list_map;
++  const auto& leads=drAccessLeads();
++  for(const auto& [net,items]:leads) for(const auto& l:items) {
++    LayerCoord anchor(l.a,l.b,l.layer);
++    if(RTUTIL.isInside(box_real_rect,anchor)) {
++      DRGroup group;
++      group.get_coord_direction_map()[anchor].insert(routing_layer_list.at(l.layer).get_prefer_direction());
++      net_group_list_map[net].push_back(group);
++    }
++  }
+   {
+     for (auto& [net_idx, access_point_set] : dr_box.get_net_access_point_map()) {
+       std::map<int32_t, DRGroup> pin_group_map;
+@@ -485,6 +554,9 @@
+         if (!RTUTIL.isInside(box_real_rect, access_point->get_real_coord())) {
+           continue;
+         }
++        auto lead=leads.find(net_idx);
++        if(lead!=leads.end() && std::any_of(lead->second.begin(),lead->second.end(),
++            [&](const auto& l){return l.pin==access_point->get_pin_idx();})) continue;
+         pin_group_map[access_point->get_pin_idx()].get_coord_direction_map()[access_point->getRealLayerCoord()].insert(
+             routing_layer_list[access_point->get_layer_idx()].get_prefer_direction());
+       }

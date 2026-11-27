@@ -66,7 +66,7 @@ export function canDeliverCompletedTask(task,job){
   // Only a completed main-task finish can trigger automatic delivery. A
   // quality/repair job on an already completed parent still needs its review.
   return task?.goal_certified===true&&task.status==='target_met'&&!task.download_verified
-    &&job?.status==='completed'&&job.request?.operation==='decision_execute';
+    &&job?.status==='completed'&&(job.request?.operation==='decision_execute'||job.request?.operation==='run'||(job.request?.operation==='act'&&job.request.action==='finish'));
 }
 
 export class AgentHub{
@@ -74,13 +74,22 @@ export class AgentHub{
   async init(){await fs.mkdir(this.directory,{recursive:true});for(const name of await fs.readdir(this.directory)){
     if(!/^silicon-[a-f0-9-]+\.json$/.test(name))continue;
     const s=JSON.parse(await fs.readFile(path.join(this.directory,name),'utf8'));
+    if(s.task?.goal_certified&&!s.task.download_verified){
+      const receipt=s.events.findLast(e=>e.type==='tool_end'&&e.name==='mp_task_download'&&
+        e.value?.download_verified===true&&e.value.state_id===s.task.state_id&&e.value.run===s.task.run);
+      if(receipt)this.observeValue(s,receipt.value);
+    }
     if(s.busy){s.busy=false;s.status={phase:'interrupted',title:'工作台服务已重启',detail:'检查点已保留。可查询持久作业，再发送消息继续；不会自动重新提交。',at:Date.now()};}
+    if(!s.qualification){
+      const receipt=s.events.findLast(e=>e.type==='tool_end'&&e.name==='mp_bp_multi_route'&&e.value?.qualification);
+      if(receipt)this.observeValue(s,receipt.value);
+    }
     this.sessions.set(s.id,s);
   }return this;}
   session(id){const s=this.sessions.get(id);if(!s)throw Error('会话不存在');return s;}
   async create(){const s={id:'silicon-'+randomUUID(),title:'新设计会话',created:Date.now(),updated:Date.now(),revision:0,messages:[],events:[],uploads:[],task:null,job:null,artifacts:[],busy:false,model:DEFAULT_MODEL,effort:DEFAULT_EFFORT,provider:'subscription',status:{phase:'idle',title:'准备就绪',detail:'描述你的设计目标，或添加登记案例的输入文件。',at:Date.now()}};this.sessions.set(s.id,s);await this.save(s);return this.view(s);}
   save(s){s.updated=Date.now();s.revision++;const json=JSON.stringify(s,null,2);const target=path.join(this.directory,s.id+'.json');const next=(this.writes.get(s.id)||Promise.resolve()).then(async()=>{await fs.writeFile(target+'.tmp',json);for(let attempt=0;;attempt++){try{await fs.rename(target+'.tmp',target);break;}catch(e){if(!['EPERM','EACCES','EBUSY'].includes(e.code)||attempt>=6)throw e;await delay(25*(attempt+1));}}});this.writes.set(s.id,next.catch(()=>{}));return next;}
-  view(s){return {...s,messages:s.messages.filter(m=>['user','assistant'].includes(m.role)).map(m=>({id:m.id,role:m.role,text:m.content.filter(b=>b.type==='text').map(b=>b.text).join('\n'),attachments:m.content.filter(b=>b.type==='file').map(b=>({name:b.attachment.name,bytes:b.attachment.bytes})),model:m.model,effort:m.effort})).filter(m=>m.text||m.attachments.length),uploads:s.uploads.map(({hostPath,...ref})=>ref)};}
+  view(s){return {...s,activeAgentSessions:this.active.size,messages:s.messages.filter(m=>['user','assistant'].includes(m.role)).map(m=>({id:m.id,role:m.role,text:m.content.filter(b=>b.type==='text').map(b=>b.text).join('\n'),attachments:m.content.filter(b=>b.type==='file').map(b=>({name:b.attachment.name,bytes:b.attachment.bytes})),model:m.model,effort:m.effort})).filter(m=>m.text||m.attachments.length),uploads:s.uploads.map(({hostPath,...ref})=>ref)};}
   list(){return [...this.sessions.values()].sort((a,b)=>b.created-a.created).map(s=>({id:s.id,title:s.title,busy:s.busy,status:s.status,model:s.model,updated:s.updated}));}
   async event(s,type,data={}){const e={seq:s.events.length+1,at:Date.now(),type,...data};s.events.push(e);await this.save(s);return e;}
   async status(s,phase,title,detail){s.status={phase,title,detail,at:Date.now()};await this.event(s,'status',s.status);}
@@ -96,6 +105,8 @@ export class AgentHub{
         throw Error('该案例尚未通过当前服务器的完整后端验收，请选择“全流程已验证”的案例。');
       }
     }
+    // Admission awaits SSH. Recheck ownership before claiming the shared runner.
+    if(this.active.size||s.busy)throw Error('主 Agent 已有运行中的会话');
     if(turn.serverCase && s.task?.contract?.case_id && s.task.contract.case_id!==turn.serverCase)throw Error('当前会话已绑定其他设计，请新建会话');
     if(turn.serverCase)turn.text+='\n\n服务器输入包：'+turn.serverCase;
     const files=turn.attachments.map(id=>{const f=s.uploads.find(f=>f.attachmentId===id);if(!f)throw Error('附件不属于此会话');return {type:'file',attachment:f};});
@@ -129,6 +140,9 @@ export class AgentHub{
     if(violations.length||Object.keys(args).some(k=>!Object.hasOwn(tool.parameters.properties,k)))throw Error('工具参数校验失败');
     const identity=dispatchIdentity(s.events,call,args);args=identity.args;
     if(call.name==='mp_task_start' && s.inputPackage && args.case_id!==s.inputPackage)throw Error('启动案例必须匹配所选服务器输入包 '+s.inputPackage);
+    if(call.name==='mp_task_start' && s.inputPackage && packages.find(p=>p.id===s.inputPackage)?.goal==='full_backend' && args.goal!=='full_backend'){
+      throw Error('所选服务器案例需要执行完整后端，请设置 goal=full_backend。');
+    }
     const exec={name:call.name,arguments:args,callId:identity.id,agent:this.agent(s),signal};
     for(const guard of guards){const denied=guard(exec);if(denied)throw Error(denied);}
     await this.status(s,'acting','正在调用 '+call.name,args.reason||tool.description.slice(0,100));
@@ -139,6 +153,29 @@ export class AgentHub{
     }catch(e){await this.event(s,'tool_error',{name:call.name,callId:call.id,error:e.message,durationMs:Date.now()-started});throw e;}
   }
   observeValue(s,value){const task=value?.task||value;if(task?.state_id&&task.contract&&task.plan)s.task=task;if(value?.job)s.job=value.job;if(task?.job)s.job=task.job;
+    if(value?.short_review && s.qualification?.delivery?.files?.['final.def']?.sha256===value.short_review.parent){
+      s.shortReview=value.short_review;
+      if(value.short_files){
+        const folder=path.resolve(taskRun(this.agent(s)));
+        for(const ref of value.short_files){
+          if(!/^bp-multi-hotspot\.(html|json|def\.gz)$/.test(ref.name)||path.resolve(ref.path)!==path.join(folder,ref.name)||value.short_review.manifest.files[ref.name]?.sha256!==ref.sha256)throw Error('局部候选文件与验收清单不符');
+          s.artifacts=s.artifacts.filter(a=>a.name!==ref.name);
+          s.artifacts.push({name:ref.name,kind:ref.kind,bytes:ref.bytes,sha256:ref.sha256,url:`/api/sessions/${s.id}/artifacts/${encodeURIComponent(ref.name)}`});
+        }
+      }
+    }
+    if(value?.qualification?.run==='full-lazy-a299a1d992ac'&&value.case_id==='bp_multi'){
+      s.qualification=value.qualification;
+      if(value.qualification_files){
+        const folder=path.resolve(taskRun(this.agent(s)));
+        if(!value.qualification.delivery||value.qualification_files.some(a=>path.dirname(path.resolve(a.path))!==folder
+            ||path.basename(a.path)!==a.name||value.qualification.delivery.files[a.name]?.sha256!==a.sha256))throw Error('资格分支交付文件与清单不一致');
+        s.artifacts=value.qualification_files.map(({name,kind,bytes,sha256})=>({name,kind,bytes,sha256,url:`/api/sessions/${s.id}/artifacts/${encodeURIComponent(name)}`}));
+      }
+    }
+    if(task?.download_verified===true&&task.deliverables&&s.task?.goal_certified&&task.state_id===s.task.state_id&&task.run===s.task.run){
+      s.task={...s.task,download_verified:true,deliverables:task.deliverables};
+    }
     if(value?.perception_report){for(const ref of [value.perception_report.report,value.perception_report.data]){
       if(ref?.path&&ref.sha256&&path.dirname(path.resolve(ref.path))===path.resolve(taskRun(this.agent(s)))){
         const name=path.basename(ref.path);s.artifacts=s.artifacts.filter(a=>a.name!==name);s.artifacts.push({kind:ref.path.endsWith('.html')?'report':'perception_data',name,sha256:ref.sha256,bytes:ref.bytes,url:`/api/sessions/${s.id}/artifacts/${encodeURIComponent(name)}`});
@@ -156,8 +193,41 @@ export class AgentHub{
     await this.status(s,'completed','交付已完成','报告、版图预览和设计文件已下载校验；质量结论见报告。');
     return true;
   }
+  async shortQuality(id,action){
+    const s=this.session(id);
+    if(s.busy)throw Error('当前会话正在执行操作');
+    if(!s.qualification?.delivery || !['diagnose','status','repair'].includes(action))throw Error('请先打开已交付的 bp_multi 会话');
+    const args={action};
+    if(action==='repair'){
+      if(!s.shortReview?.proposal_id)throw Error('请先取得服务器诊断和候选编号');
+      args.proposal_id=s.shortReview.proposal_id;
+    }
+    s.busy=true;
+    try{
+      const result=await this.execute(s,{name:'mp_bp_multi_quality',id:'short-'+randomUUID(),arguments:JSON.stringify(args)});
+      if(!result.short_review)throw Error(result.error||'服务器没有返回短路复验记录');
+      await this.status(s,'completed','局部质量检查已更新',result.short_review.status);
+    }finally{s.busy=false;await this.save(s);}
+    return this.view(s);
+  }
   async refresh(id){
     const s=this.session(id);if(s.busy)return this.view(s);
+    if(s.qualification&&!s.task){
+      const req={mode:'task',operation:'bp_multi_route',run:taskRun(this.agent(s)),action:'status'};
+      const current=await this.transport(req);
+      if(s.busy)return this.view(s);
+      if(current.qualification?.delivery&&!s.artifacts.length){
+        s.busy=true;
+        try{
+          const delivered=await this.transport({...req,action:'delivery'});
+          this.observeValue(s,delivered);
+          await this.status(s,'completed','整芯片流程已交付','报告、版图预览、DEF 与 GDS 均已校验');
+        }finally{s.busy=false;await this.save(s);}
+      }else if(JSON.stringify(s.qualification)!==JSON.stringify(current.qualification)){
+        this.observeValue(s,current);await this.save(s);
+      }
+      return this.view(s);
+    }
     const value=s.job?await this.transport({mode:'task',operation:'job_status',run:taskRun(this.agent(s)),job_id:s.job.job_id}):await this.transport({mode:'task',operation:'context',run:taskRun(this.agent(s))});
     this.observeValue(s,value);await this.event(s,'remote_refresh',{value});
     if(!this.active.size&&canDeliverCompletedTask(value?.task||value,s.job)){
@@ -178,6 +248,30 @@ export class AgentHub{
     const pending=s.task?.pending;await this.status(s,'waiting','服务器正在执行 '+(s.job.request?.operation==='quality_execute'?'hold 成本收益审查':s.job.request?.operation==='local_execute'?'局部过孔候选与质量验证':pending?.action||pending?.stage||s.task?.phase||'iEDA'),'job '+s.job.job_id+' · 宿主查询作业进度，不消耗模型轮询');
     await delay(this.pollMs,undefined,{signal});
   }}
+  async decisionBrief(s,task,signal){
+    if(!s.inputPackage||task?.contract?.goal!=='full_backend'||task.status!=='running'||!task.main_decision?.decision_required)return null;
+    const previous=s.decisionBrief;
+    if(previous?.state_id===task.state_id&&previous.choices.decision_state_id===task.main_decision.decision_state_id)return previous;
+    if(s.unavailableBrief===task.main_decision.decision_state_id)return null;
+    // Register the observation before asking for candidates: recording fresh
+    // evidence can advance the planner revision. Selection stays with the model.
+    const read=(operation,fields={})=>this.transport({mode:'task',run:taskRun(this.agent(s)),operation,...fields},signal);
+    let facts,choices;
+    try{
+      facts=await read('decision_inspect',{kind:'summary'});
+      choices=await read('decision_catalog');
+    }catch(error){
+      signal.throwIfAborted();
+      s.unavailableBrief=task.main_decision.decision_state_id;
+      await this.event(s,'decision_brief_unavailable',{stage:task.phase,error:error.message});
+      return null;
+    }
+    if(!facts?.evidence_id||facts.state_id!==task.state_id||choices.state_id!==task.state_id||
+       !facts.decision_state_id||facts.decision_state_id!==choices.decision_state_id)return null;
+    s.decisionBrief={state_id:task.state_id,facts,choices};
+    await this.event(s,'decision_brief',{stage:task.phase,state_id:task.state_id,evidence_id:facts.evidence_id,native_started:false});
+    return s.decisionBrief;
+  }
   async loop(s,signal){
     if(s.job&&!terminal.has(s.job.status))await this.monitor(s,signal);
     for(let i=0;i<40;i++){
@@ -185,17 +279,39 @@ export class AgentHub{
       let task=await this.transport({mode:'task',operation:'context',run:taskRun(this.agent(s))},signal);this.observeValue(s,task);
       if(s.job&&!terminal.has(s.job.status)){await this.monitor(s,signal);task=await this.transport({mode:'task',operation:'context',run:taskRun(this.agent(s))},signal);this.observeValue(s,task);}
       if(await this.deliverCompletedTask(s,task,signal))return;
+      let brief=await this.decisionBrief(s,task,signal);
+      if(brief&&brief.choices.decision_state_id!==task.main_decision.decision_state_id){
+        task=await this.transport({mode:'task',operation:'context',run:taskRun(this.agent(s))},signal);this.observeValue(s,task);
+        if(task?.state_id!==brief.state_id||task.main_decision?.decision_state_id!==brief.choices.decision_state_id)brief=null;
+      }
       const visible=await visibleToolNames(taskRun(this.agent(s)));
-      const schemas=[...definitions.values()].filter(t=>visible.has(t.name)&&(!task||taskToolNames.includes(t.name))).map(({name,description,parameters})=>({name,description,parameters}));
+      const needsPlan=task?.main_decision?.decision_required===true;
+      if(needsPlan)for(const name of ['mp_task_inspect','mp_task_choices','mp_task_plan'])visible.add(name);
+      if(task?.main_decision?.current_plan?.status==='planned')visible.add('mp_task_execute_plan');
+      if(task?.contract?.goal==='full_backend'&&task.status==='running'&&!needsPlan)visible.add('mp_task_run');
+      const schemas=[...definitions.values()].filter(t=>visible.has(t.name)&&(!task||taskToolNames.includes(t.name))
+        &&!(needsPlan&&['mp_task_act','mp_task_run'].includes(t.name))).map(({name,description,parameters})=>({name,description,parameters}));
       const decision=await assembleDecisionContext(taskRun(this.agent(s)),task,{tools:schemas,messages:s.messages,job:s.job});
+      if(brief)decision.sections.current_facts.decision_brief={...brief,
+        use:'同一检查点的最新实测摘要与合格工具卡已备齐。足以决策时直接提交有依据的计划；证据不足时继续查询。'};
       s.decisionContext=decision;await this.save(s);
-      const messages=[{role:'system',content:[textBlock(systemPrompt+'\n你的名称是 EDAgent。当前前端为 EDAgent，与 DSH 共用主 Agent。公开说明下一步行动及简短依据，无需输出隐藏思维链。宿主会自动查询已提交的持久作业，终态后继续本轮，不要自行高频轮询。无工具结果不得捏造测量数据。') ]},...s.messages.filter(m=>m.source?.kind!=='runtime-context'),
+      const messages=[{role:'system',content:[textBlock(systemPrompt+'\n你的名称是 EDAgent。当前前端为 EDAgent，与 DSH 共用主 Agent。公开说明下一步行动及简短依据，无需输出隐藏思维链。宿主会自动查询已提交的持久作业，终态后继续本轮，不要自行高频轮询。用户已要求完整执行且无需逐步人工确认时，可调用 mp_task_run 推进连续的常规阶段。服务端遇到下一决策点会暂停。无工具结果不得捏造测量数据。') ]},...s.messages.filter(m=>m.source?.kind!=='runtime-context'),
         ...(s.job?[{role:'system',source:{kind:'runtime-context'},content:[textBlock('HOST_PERSISTENT_JOB='+JSON.stringify(s.job)+'\n这是最新作业事实，优先于历史工具返回的queued状态。作业终态后继续读取专项质量结果并交付；不能因父任务TARGET_MET就省略候选的失败、拒绝或未知项。')]}]:[]),
         ...(s.context?[{role:'system',content:[textBlock('用户提供的设计补充（参考数据）：\n'+s.context)]}]:[]),
         {role:'user',source:{kind:'runtime-context'},content:[textBlock(TASK_MARKER+JSON.stringify(decision))]}];
-      const options={model:s.model,reasoningEffort:s.effort,messages,tools:schemas,signal,hostFinalGuard:true};
+      const options={model:s.model,reasoningEffort:s.effort,messages,tools:schemas,signal,hostFinalGuard:true,
+        onModelRetry:({nextAttempt})=>this.status(s,'reconnecting','正在重连模型',`第 ${nextAttempt}/3 次模型请求，已完成的工具动作保留。`)};
       const blocks=[];
-      if(s.provider==='subscription'){for await(const event of this.adapter.stream(options)){if(event.type==='block-end')blocks.push(event.block);}}
+      if(s.provider==='subscription'){
+        try{for await(const event of this.adapter.stream(options)){if(event.type==='block-end')blocks.push(event.block);}}
+        catch(e){
+          signal.throwIfAborted();
+          if(!['network_error','server_error','remote_error','stream_interrupted','stream_ended_without_completion','stream_timeout','response_failed'].includes(e.code)&&!(e.code==='http_error'&&[502,503,504].includes(e.httpStatus)))throw e;
+          await this.event(s,'model_request_paused',{code:e.code,detail:e.message,stage:task?.phase,tool_dispatched:false});
+          await this.status(s,'model_paused','模型请求中断，已保存进度',e.message);
+          return;
+        }
+      }
       else{const log=path.join(this.directory,s.id+'.model.jsonl'),history=await fs.readFile(log,'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;});if(turnRequestCount(history,messages)>=turnRequestLimit(task))throw Error('MODEL_BUDGET: 本轮模型预算耗尽');if(task)await this.transport({mode:'task',operation:'reserve_model',run:task.run},signal);
         const assembled=compactMessages(messages,log);await fs.appendFile(log,JSON.stringify({event:'request',turn_key:turnKey(messages),model:s.model,reasoning_effort:s.effort,messages:assembled.messages})+'\n');
         const r=await apiBridge({mode:'infer',model:s.model,effort:s.effort,messages:assembled.messages,tools:schemas},signal);blocks.push(...r.blocks);
@@ -206,10 +322,20 @@ export class AgentHub{
       if(checked.check){s.finalConsistency=checked.check;await this.event(s,'final_consistency',checked.check);}
       s.messages.push({id:randomUUID(),role:'assistant',content:checked.blocks,model:s.model,effort:s.effort});await this.event(s,'model_response',{model:s.model,effort:s.effort,blocks:checked.blocks});
       if(!calls.length){const incomplete=checked.check?.incomplete===true;await this.status(s,incomplete?'needs_evidence':'completed',incomplete?'诊断已展示 · 仍缺证据':'回复已完成',incomplete?'已有诊断保留展示；未完成子目标、缺失回执和局部更正已单列，未宣称全部完成。':s.task?.download_verified?'交付文件已下载并校验 SHA256；质量结论见报告。':'可以继续补充设计要求。');return;}
-      for(const call of calls){
+      for(const [callIndex,call] of calls.entries()){
         // Persist intent before dispatch; after crash no action is replayed automatically.
         try{const value=await this.execute(s,call,signal);s.messages.push({id:randomUUID(),role:'tool',name:call.name,toolCallId:call.id,content:[textBlock(JSON.stringify(value))]});await this.save(s);
-        }catch(e){s.messages.push({id:randomUUID(),role:'tool',name:call.name,toolCallId:call.id,content:[textBlock(JSON.stringify({error:e.message,execution_uncertain:true,note:'保留检查点；查询同一任务，不自动重新提交。'}))]});await this.save(s);throw e;}
+        }catch(e){
+          const replan=/^(?:host bridge: )?MAIN_DECISION_REQUIRED(?::|;|$)/.test(e.message);
+          const note=replan?'规划前置检查已拒绝动作，原生执行未开始。重新读取当前观察、查询工具候选并提交证据计划，不能重试同一直接动作。':'保留检查点；查询同一任务，不自动重新提交。';
+          s.messages.push({id:randomUUID(),role:'tool',name:call.name,toolCallId:call.id,content:[textBlock(JSON.stringify({error:e.message,execution_uncertain:!replan,note}))]});
+          if(replan){
+            for(const skipped of calls.slice(callIndex+1))s.messages.push({id:randomUUID(),role:'tool',name:skipped.name,toolCallId:skipped.id,content:[textBlock(JSON.stringify({error:'NOT_EXECUTED_REPLAN_REQUIRED',execution_uncertain:false,note}))]});
+            await this.event(s,'planning_guard_recovery',{code:'MAIN_DECISION_REQUIRED',blockedCall:call.id,skippedCalls:calls.slice(callIndex+1).map(c=>c.id),native_started:false});
+            break;
+          }
+          await this.save(s);throw e;
+        }
         if(s.job&&!terminal.has(s.job.status))await this.monitor(s,signal);
       }
     }throw Error('MODEL_BUDGET: 已达到本轮主循环上限，检查点已保存');

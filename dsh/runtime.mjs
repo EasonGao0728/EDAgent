@@ -22,14 +22,17 @@ export function bridge(request, signal){
     signal?.addEventListener('abort',cancel,{once:true});
     // Remote requests only submit/query durable jobs. Aborting SSH does not
     // cancel server computation; cancellation requires the scoped job API.
-    const timer=setTimeout(cancel,remote?(request.operation==='download'?660000:150000):210000);
+    // The bp_multi artifact client applies the accepted transfer budget after
+    // reading the server manifest. A short status-call timer can kill it mid-file.
+    const qualificationDelivery=remote&&((request.operation==='bp_multi_route'&&request.action==='delivery')||(request.operation==='bp_multi_quality'&&request.action==='status'));
+    const timer=qualificationDelivery?undefined:setTimeout(cancel,remote?(request.operation==='download'?660000:150000):210000);
     child.stdout.on('data',d=>{out+=d;if(out.length>4000000)cancel();});
     child.stderr.on('data',d=>{err=(err+d).slice(-1000);});
     child.on('error',reject);
     child.on('close',()=>{
       clearTimeout(timer);signal?.removeEventListener('abort',cancel);
       try{const r=JSON.parse(out);if(!r.ok){
-        const e=Error(r.error);e.code=r.code;e.requiresLogin=r.requires_login===true;
+        const e=Error(r.error);e.code=r.code;e.httpStatus=r.http_status;e.requiresLogin=r.requires_login===true;
         if(r.code==='invalid_json_response'){
           try{
             const file=path.join(root,'runs','dsh-host-last-error.json');
@@ -38,7 +41,7 @@ export function bridge(request, signal){
         }
         throw e;
       }resolve(r.value);}
-      catch(e){const wrapped=Error(`host bridge: ${e.message}; ${err}`);wrapped.code=e.code;wrapped.requiresLogin=e.requiresLogin;wrapped.retryableCatalogRead=e.retryableCatalogRead===true;reject(wrapped);}
+      catch(e){const wrapped=Error(`host bridge: ${e.message}; ${err}`);wrapped.code=e.code;wrapped.httpStatus=e.httpStatus;wrapped.requiresLogin=e.requiresLogin;wrapped.retryableCatalogRead=e.retryableCatalogRead===true;reject(wrapped);}
     });
     child.stdin.end(JSON.stringify(request));
     if(signal?.aborted)cancel();

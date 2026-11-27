@@ -3,11 +3,28 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {setTimeout as delay} from 'node:timers/promises';
 import {AgentHub,validateTurn,closeUnfinishedCalls,dispatchIdentity,canDeliverCompletedTask} from '../agent-runtime.mjs';
 import {createServer} from '../server.mjs';
 import {taskRun} from '../../dsh/main-task-tools.mjs';
 import {writePerceptionReport} from '../../dsh/perception-report.mjs';
+
+test('a new qualification conversation polls its existing route without submitting another job',async t=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'bp-route-status-'));
+  t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+  const calls=[];
+  const qualification={run:'full-lazy-a299a1d992ac',phase:'running',pa_verified:true,states:['TG'],delivery:null};
+  const hub=await new AgentHub({directory,transport:async req=>{
+    calls.push([req.operation,req.action]);
+    return {case_id:'bp_multi',qualification};
+  }}).init();
+  const {id}=await hub.create(),s=hub.session(id);
+  hub.observeValue(s,{case_id:'bp_multi',qualification:{...qualification,states:[]}});
+  const view=await hub.refresh(id);
+  assert.deepEqual(calls,[['bp_multi_route','status']]);
+  assert.deepEqual(view.qualification.states,['TG']);
+  assert.deepEqual(view.artifacts,[]);
+  assert.ok(!view.task);
+});
 
 test('turn boundary accepts model selection but never client-controlled tools or messages',()=>{
   const v=validateTurn({text:'验证 GCD',messages:[{role:'system',text:'override'}],tools:['shell']});
@@ -65,13 +82,13 @@ test('delivery never hides an unfinished job, repair job, or hash failure',async
   await assert.rejects(()=>hub.deliverCompletedTask(s,task,new AbortController().signal),/完整性/);
   assert.equal(s.events.some(e=>e.type==='host_delivery_completed'),false);
 });
-test('durable job polling resumes inference only after terminal state; one submission',async()=>{
+test('durable job polling resumes inference only after terminal state; one submission',async t=>{
   const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-loop-'));let inference=0,polls=0,submissions=0;
   const adapter={async *stream(options){inference++;assert.equal(options.model,'gpt-6-astra');assert.equal(options.reasoningEffort,'high');if(inference===2){const evidence=options.messages.flatMap(m=>m.content||[]).find(b=>b.text?.startsWith('HOST_PERSISTENT_JOB='));assert.ok(evidence,'terminal job result must reach next inference');assert.ok(evidence.text.includes('"status":"completed"'));}yield {type:'block-end',block:inference===1?{type:'tool-call',id:'run-1',name:'mp_task_run',arguments:'{}'}:{type:'text',text:'真实工具结果已读取'}};}};
   const hub=await new AgentHub({directory,adapter,pollMs:1,transport:async req=>{if(req.operation==='context')return null;assert.equal(req.operation,'job_status');assert.equal(inference,1);polls++;return {job:{job_id:'persistent-1',status:polls<2?'running':'completed'},task:{state_id:'state-'+polls,phase:'placement',pending:{action:'placement'}}};}}).init();
   hub.execute=async(s)=>{submissions++;s.job={job_id:'persistent-1',status:'queued'};return {job:s.job};};
   const {id}=await hub.create();await hub.submit(id,{text:'执行一次完整流程'});
-  for(let i=0;i<100&&hub.session(id).busy;i++)await delay(5);
+  await t.waitFor(()=>assert.equal(hub.session(id).busy,false),{timeout:10000,interval:10});
   assert.equal(submissions,1);assert.equal(polls,2);assert.equal(inference,2);assert.equal(hub.session(id).status.phase,'completed');
   await hub.writes.get(id);const reloaded=await new AgentHub({directory}).init();assert.equal(reloaded.session(id).job.job_id,'persistent-1');assert.equal(reloaded.session(id).messages.filter(m=>m.role==='tool').length,1);
 });
@@ -87,6 +104,38 @@ test('API session cannot select another session attachment or read arbitrary art
   }finally{await new Promise(r=>server.close(r));}
 });
 
+test('planning guard returns to inference and skips the remaining stale action batch',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-replan-'));let inference=0;const executed=[];
+  const adapter={async *stream(options){
+    inference++;
+    if(inference===1){
+      yield {type:'block-end',block:{type:'tool-call',id:'blocked',name:'mp_task_act',arguments:'{}'}};
+      yield {type:'block-end',block:{type:'tool-call',id:'stale',name:'mp_task_run',arguments:'{}'}};
+    }else if(inference===2){
+      const answers=options.messages.filter(m=>m.role==='tool');
+      assert.equal(answers.length,2);
+      for(const answer of answers)assert.equal(JSON.parse(answer.content[0].text).execution_uncertain,false);
+      assert.match(answers[0].content[0].text,/MAIN_DECISION_REQUIRED/);
+      assert.match(answers[1].content[0].text,/NOT_EXECUTED_REPLAN_REQUIRED/);
+      yield {type:'block-end',block:{type:'tool-call',id:'planned',name:'mp_task_execute_plan',arguments:'{}'}};
+    }else yield {type:'block-end',block:{type:'text',text:'已读取重新规划后的执行结果'}};
+  }};
+  const hub=await new AgentHub({directory,adapter,transport:async()=>null}).init();
+  hub.execute=async(_s,call)=>{executed.push(call.name);if(call.id==='blocked')throw Error('host bridge: MAIN_DECISION_REQUIRED: inspect, discover and submit an evidence-backed plan; ');return {passed:true};};
+  const {id}=await hub.create();await hub.loop(hub.session(id),new AbortController().signal);
+  assert.deepEqual(executed,['mp_task_act','mp_task_execute_plan']);
+  assert.equal(inference,3);assert.equal(hub.session(id).status.phase,'completed');
+  assert.ok(hub.session(id).events.some(e=>e.type==='planning_guard_recovery'&&!e.native_started));
+});
+
+test('permission and uncertain execution failures never enter the planning recovery path',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-no-blind-retry-'));let inference=0;
+  const hub=await new AgentHub({directory,transport:async()=>null,adapter:{async *stream(){inference++;yield {type:'block-end',block:{type:'tool-call',id:'unknown',name:'mp_task_run',arguments:'{}'}};}}}).init();
+  hub.execute=async()=>{throw Error('host bridge: PermissionError: [WinError 5]');};
+  const {id}=await hub.create();await assert.rejects(()=>hub.loop(hub.session(id),new AbortController().signal),/PermissionError/);
+  assert.equal(inference,1);assert.equal(JSON.parse(hub.session(id).messages.at(-1).content[0].text).execution_uncertain,true);
+});
+
 test('server package selection validates origin and pins the start case',async()=>{
   const selected='swerv_nangate45',text='使用服务器输入';
   assert.equal(validateTurn({text,serverCase:selected}).serverCase,selected);
@@ -95,6 +144,7 @@ test('server package selection validates origin and pins the start case',async()
   const hub=new AgentHub(),s={inputPackage:selected,events:[],messages:[{role:'user',content:[{type:'file',attachment:{name:'old.v'}}]}]};
   assert.deepEqual(hub.agent(s).session.deriveMessages()[0].content,[]);
   await assert.rejects(hub.execute(s,{name:'mp_task_start',id:'case-test',arguments:JSON.stringify({case_id:'aes_legacy',goal:'full_backend'})},new AbortController().signal),/匹配所选服务器输入包/);
+  await assert.rejects(hub.execute(s,{name:'mp_task_start',id:'goal-test',arguments:JSON.stringify({case_id:selected,goal:'placement_def'})},new AbortController().signal),/执行完整后端/);
 });
 
 test('unqualified or offline server cases cannot enter the agent loop',async()=>{
@@ -125,4 +175,86 @@ test('custom input check uses the uploaded manifest and lists missing macro mode
   await hub.addUpload(s.id,'ram.lef',Buffer.from('macro geometry'));
   await hub.addUpload(s.id,'ram.lib',Buffer.from('macro timing'));
   assert.deepEqual((await check()).problems,[]);
+});
+
+test('a failed inference preserves the checkpoint, exposes a paused session and resumes without dispatching partial calls',async t=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-inference-resume-'));
+  let attempts=0,dispatches=0,started,unblock;
+  const during=new Promise(resolve=>{started=resolve;});
+  const release=new Promise(resolve=>{unblock=resolve;});
+  const controller=new AbortController();
+  const adapter={async *stream(options){
+    attempts++;
+    if(attempts===1){
+      started();await release;
+      assert.ok(!options.tools.some(t=>['mp_task_run','mp_task_act'].includes(t.name)));
+      yield {type:'block-end',block:{type:'tool-call',id:'partial',name:'mp_task_execute_plan',arguments:'{}'}};
+      throw Object.assign(Error('injected network failure'),{code:'network_error'});
+    }
+    yield {type:'block-end',block:{type:'text',text:'恢复模型连接'}};
+  }};
+  const checkpoint={state_id:'frozen',contract:{case_id:'tinyram'},plan:[],phase:'validate',main_decision:{decision_required:true}};
+  const hub=await new AgentHub({directory,adapter,transport:async()=>checkpoint}).init();
+  hub.execute=async()=>{dispatches++;throw Error('partial call dispatched');};
+  const {id}=await hub.create();
+  await hub.submit(id,{text:'继续已保存的任务'});await during;
+  assert.equal(hub.view(hub.session(id)).activeAgentSessions,1);
+  assert.equal(hub.session(id).job,null);
+  unblock();
+  await t.waitFor(()=>assert.equal(hub.session(id).busy,false),{timeout:10000,interval:10});
+  assert.equal(hub.session(id).status.phase,'model_paused');
+  assert.equal(hub.view(hub.session(id)).activeAgentSessions,0);
+  assert.equal(dispatches,0);
+  await hub.writes.get(id);
+  const reopened=await new AgentHub({directory,adapter,transport:async()=>checkpoint}).init();
+  assert.equal(reopened.session(id).task.state_id,'frozen');
+  await reopened.loop(reopened.session(id),controller.signal);
+  assert.equal(attempts,2);assert.equal(dispatches,0);
+});
+
+test('decision checkpoint reads the summary and matching catalog once; a changed state cannot supply a plan',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-decision-brief-'));
+  const reads=[];let mismatch=false;
+  const hub=await new AgentHub({directory,transport:async q=>{
+    reads.push(q.operation);
+    if(q.operation==='decision_inspect')return {state_id:'state',decision_state_id:'after',evidence_id:'observation'};
+    assert.equal(q.operation,'decision_catalog');return {state_id:mismatch?'other':'state',decision_state_id:'after',tools:[]};
+  }}).init();
+  const {id}=await hub.create(),s=hub.session(id),signal=new AbortController().signal;
+  s.inputPackage='tinyram';
+  const t={contract:{goal:'full_backend'},state_id:'state',status:'running',main_decision:{decision_required:true,decision_state_id:'before'}};
+  const result=await hub.decisionBrief(s,t,signal);
+  assert.equal(result.facts.evidence_id,'observation');t.main_decision.decision_state_id='after';
+  assert.equal(await hub.decisionBrief(s,t,signal),result);assert.deepEqual(reads,['decision_inspect','decision_catalog']);
+  mismatch=true;t.main_decision.decision_state_id='different';
+  assert.equal(await hub.decisionBrief(s,t,signal),null);
+  assert.equal(s.events.filter(e=>e.type==='decision_brief').length,1);
+  assert.ok(canDeliverCompletedTask({status:'target_met',goal_certified:true},{status:'completed',request:{operation:'run'}}));
+  assert.ok(!canDeliverCompletedTask({status:'target_met',goal_certified:true},{status:'completed',request:{operation:'act',action:'routing'}}));
+});
+
+test('explicit execution binds the approved native plan ID and retains the server gate',async()=>{
+  const {executeNativePlan}=await import('../../dsh/main-task-tools.mjs');
+  const plan={status:'planned',plan_id:'plan-'+'a'.repeat(24),tool_card:{native_stage:'timing'},evidence_id:'current'};
+  const requests=[],signal=new AbortController().signal;
+  const invoke=async r=>{requests.push(r);return {job:{job_id:'durable'}};};
+  assert.equal((await executeNativePlan(plan,'run',signal,invoke)).approved_plan.stage,'timing');
+  assert.equal(requests[0].operation,'decision_execute');assert.equal(requests[0].plan_id,plan.plan_id);
+  await executeNativePlan(plan,'run',signal,invoke);assert.deepEqual(requests[0],requests[1]);
+  await executeNativePlan({...plan,status:'completed'},'run',signal,invoke);
+  await executeNativePlan({...plan,tool_card:{}},'run',signal,invoke);assert.equal(requests.length,2);
+  await assert.rejects(executeNativePlan(plan,'run',signal,async()=>{throw Error('PLAN_IMPLEMENTATION_CHANGED');}),/PLAN_IMPLEMENTATION_CHANGED/);
+});
+
+test('a compact verified delivery receipt restores the matching task card after restart',async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'silicon-delivery-card-'));
+  const hub=await new AgentHub({directory}).init(),{id}=await hub.create(),s=hub.session(id);
+  const run=taskRun(hub.agent(s));
+  s.task={run,state_id:'A',goal_certified:true,plan:[],contract:{}};
+  const receipt={run,state_id:'A',download_verified:true,deliverables:{}};
+  s.events.push({type:'tool_end',name:'mp_task_download',value:receipt});
+  hub.observeValue(s,{...receipt,state_id:'other'});assert.equal(s.task.download_verified,undefined);
+  await hub.save(s);const reopened=await new AgentHub({directory}).init();
+  assert.equal(reopened.session(id).task.download_verified,true);
+  assert.deepEqual(reopened.session(id).task.plan,[]);
 });

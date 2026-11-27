@@ -1,0 +1,85 @@
+--- a/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
++++ b/src/operation/iRT/source/module/pin_accessor/PinAccessor.cpp
+@@ -70,7 +70,7 @@
+ // Some standard-cell ports have just enough metal for the default via.
+ // Their admissible centers form a line or a point; polygon-area operations
+ // can discard these. Check the actual emitted via against original geometry.
+-bool clearDefaultVia(int32_t net, LayerCoord source, LayerCoord landing)
++bool clearDefaultVia(int32_t net, LayerCoord source, LayerCoord landing, bool trace)
+ {
+   auto& db = RTDM.getDatabase();
+   for (const NetShape& metal : RTDM.getNetDetailedShapeList(net, source, landing)) {
+@@ -91,7 +91,16 @@
+           auto& layer = db.get_cut_layer_list()[metal.get_layer_idx()];
+           spacing = std::max({layer.get_curr_spacing(), layer.get_curr_prl_spacing(), layer.get_curr_eol_spacing(), 0});
+         }
+-        if (RTUTIL.isOpenOverlap(RTUTIL.getEnlargedRect(metal, spacing), obstacle->get_real_rect())) return false;
++
++        if (RTUTIL.isOpenOverlap(RTUTIL.getEnlargedRect(metal, spacing), obstacle->get_real_rect())) {
++          if (trace) {
++            const auto& fixed_box = obstacle->get_real_rect();
++            RTLOG.info(Loc::current(), "EDA_PA_REJECT xy=", source.get_x(), ",",source.get_y(),
++                       " route=",metal.get_is_routing()," level=",metal.get_layer_idx()," pad=",metal.get_ll_x(),",",metal.get_ll_y(),",",metal.get_ur_x(),",",metal.get_ur_y(),
++                       " spacing=",spacing," obstacle_net=",other, " fixed=",fixed_box.get_ll_x(),",",fixed_box.get_ll_y(),",",fixed_box.get_ur_x(),",",fixed_box.get_ur_y());
++          }
++          return false;
++        }
+       }
+     }
+   }
+@@ -100,6 +109,8 @@
+ 
+ void addEnclosedLanding(PAPin* pin, int32_t net, int32_t limit)
+ {
++  const auto* name = std::getenv("IEDA_RT_PA_TRACE_PIN");
++  const bool trace = name && pin->get_pin_name() == name;
+   auto& db = RTDM.getDatabase();
+   const int32_t bottom = RTDM.getConfig().bottom_routing_layer_idx;
+   if (!pin->get_is_core() || bottom < 1 || bottom + 1 > RTDM.getConfig().top_routing_layer_idx) return;
+@@ -109,7 +120,10 @@
+   auto& points = pin->get_access_point_list();
+   for (auto& ap : points) {
+     const auto& p = ap.get_real_coord();
+-    if (onPreferredTrack(LayerCoord(p,bottom)) && onPreferredTrack(LayerCoord(p,bottom+1))) return;
++    if (onPreferredTrack(LayerCoord(p,bottom)) && onPreferredTrack(LayerCoord(p,bottom+1))) {
++      if (trace) RTLOG.info(Loc::current(),"EDA_PA_EXISTING_DUAL xy=",p.get_x(),",",p.get_y());
++      return;
++    }
+   }
+   const auto& enclosure = db.get_layer_via_master_list().at(bottom-1).front().get_below_enclosure();
+   const int32_t step = db.get_manufacture_grid();
+@@ -119,6 +133,8 @@
+       const auto& rect = shape.get_real_rect();
+       const int32_t lx = rect.get_ll_x() - enclosure.get_ll_x(), ux = rect.get_ur_x() - enclosure.get_ur_x();
+       const int32_t ly = rect.get_ll_y() - enclosure.get_ll_y(), uy = rect.get_ur_y() - enclosure.get_ur_y();
++      if (trace && grade==2) RTLOG.info(Loc::current(),"EDA_PA_ENCLOSURE via=",db.get_layer_via_master_list().at(bottom-1).front().get_via_name(),
++          " metal=",rect.get_ll_x(),",",rect.get_ll_y(),",",rect.get_ur_x(),",",rect.get_ur_y()," locus=",lx,",",ly,",",ux,",",uy);
+       if (lx > ux || ly > uy) continue;
+       auto xs=RTUTIL.getScaleList(lx,ux,landing.isPreferH() ? next.getXTrackGridList() : landing.getXTrackGridList());
+       auto ys=RTUTIL.getScaleList(ly,uy,landing.isPreferH() ? landing.getYTrackGridList() : next.getYTrackGridList());
+@@ -129,10 +145,11 @@
+       for (int32_t x : xs) for (int32_t y : ys) {
+         if (x < lx || x > ux || y < ly || y > uy || x % step || y % step) continue;
+         LayerCoord p(x,y,bottom-1);
+-        if (!clearDefaultVia(net,p,LayerCoord(x,y,bottom))) continue;
++        if (!clearDefaultVia(net,p,LayerCoord(x,y,bottom),trace)) continue;
+         if (std::any_of(points.begin(),points.end(),[&p](AccessPoint& ap){return ap.getRealLayerCoord()==p;})) return;
+         if (static_cast<int32_t>(points.size())>=limit) points.pop_back();
+         points.emplace_back(pin->get_pin_idx(),p);
++        if (trace) RTLOG.info(Loc::current(),"EDA_PA_ADDED xy=",x,",",y," grade=",grade);
+         return;
+       }
+     }
+@@ -1695,6 +1712,12 @@
+         }
+         detail << "]";
+       }
++      const auto& rect = pa_box.get_box_rect().get_real_rect();
++      detail << " box_bounds=" << rect.get_ll_x() << "," << rect.get_ll_y() << "," << rect.get_ur_x() << "," << rect.get_ur_y() << " all_pin_aps=";
++      for (auto& ap : pa_task->get_pa_pin()->get_access_point_list()) {
++        detail << "(" << ap.get_real_coord().get_x() << "," << ap.get_real_coord().get_y() << "," << ap.get_layer_idx()
++               << ";g" << ap.get_grid_coord().get_x() << "," << ap.get_grid_coord().get_y() << ")";
++      }
+       RTLOG.error(Loc::current(), "No legal PA path for net=", RTDM.getDatabase().get_net_list().at(pa_task->get_net_idx()).get_net_name(),
+                   " pin=", pa_task->get_pa_pin()->get_pin_name(), " box=", pa_box.get_pa_box_id().get_x(), ",", pa_box.get_pa_box_id().get_y(),
+                   detail.str());

@@ -1,0 +1,19 @@
+--- a/src/operation/iRT/source/toolkit/utility/Utility.hpp
++++ b/src/operation/iRT/source/toolkit/utility/Utility.hpp
+@@ -1541,10 +1541,12 @@
+           scale_line_list.push_back(scale_grid.get_start_line());
+         }
+       } else {
+-        for (int32_t scale_line = scale_grid.get_start_line(); scale_line <= scale_grid.get_end_line(); scale_line += scale_grid.get_step_length()) {
+-          if (begin_line <= scale_line && scale_line <= end_line) {
+-            scale_line_list.push_back(scale_line);
+-          }
++        // Visit only the closed interval requested (often one small PA box).
++        const int64_t start = scale_grid.get_start_line(), pitch = scale_grid.get_step_length();
++        const int64_t first = start + (std::max<int64_t>(0, int64_t(begin_line) - start) + pitch - 1) / pitch * pitch;
++        const int64_t last = std::min(end_line, scale_grid.get_end_line());
++        for (int64_t line = first; line <= last; line += pitch) {
++          scale_line_list.push_back(static_cast<int32_t>(line));
+         }
+       }
+     }

@@ -71,6 +71,28 @@ export function compactMessages(messages,archiveRef,maxChars=64000){
   messages=messages.map(m=>isRuntimeContext(m)?{...m,source:{kind:m.source.kind,form:m.source.form}}:m);
   const size=value=>JSON.stringify(value).length;
   if(size(messages)<=maxChars)return {messages,compacted:false,measurement:'JSON characters, not tokens'};
+  // Large physical evidence can coincide with earlier retrievals and reflections.
+  // The provider has archived the full assembly. Index only historical memory;
+  // keep the frozen contract, current measurements and recent tool transaction.
+  messages=messages.map(m=>{
+    if(!isRuntimeContext(m))return m;
+    const content=m.content.map(b=>{
+      if(b.type!=='text'||!b.text.startsWith(TASK_MARKER))return b;
+      const ctx=JSON.parse(b.text.slice(TASK_MARKER.length));
+      if(ctx.schema_version!=='aieda_decision_context_v1')return b;
+      const sections=ctx.sections,history=sections.attempts_feedback;
+      if(sections.retrieved_knowledge?.items){
+        sections.retrieved_knowledge.items=sections.retrieved_knowledge.items.map(({data,...ref})=>({...ref,
+          query:data?.query,disposition:data?.disposition,card_ids:data?.candidates?.map(c=>c.id),
+          status:data?.status,evidence_ref:data?.evidence_ref,hits:data?.hits?.map(h=>({chunk_id:h.chunk_id,
+            source_ref:h.source_ref,section_or_page:h.section_or_page,excerpt:h.text?.slice(0,240)})),full_result_archive:archiveRef}));
+      }
+      if(history?.reflections)history.reflections=history.reflections.map(r=>({...r,evidence:r.evidence?.map(e=>({id:e.id,ok:e.ok}))}));
+      if(history?.recent)history.recent=history.recent.map(({scope,archive,goal_id,...receipt})=>receipt);
+      return {...b,text:TASK_MARKER+JSON.stringify(ctx)};
+    });
+    return {...m,content};
+  });
   const keep=new Set();
   messages.forEach((m,i)=>{if(m.role==='system'||(m.role==='user'&&!isRuntimeContext(m)))keep.add(i);});
   const contextIndex=messages.findLastIndex(isRuntimeContext);

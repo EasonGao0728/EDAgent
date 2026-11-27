@@ -1,0 +1,70 @@
+--- a/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
++++ b/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
+@@ -36,13 +36,7 @@
+ namespace {
+ size_t drBatchCursor() {
+   const char* level=std::getenv("IEDA_RT_RESTORE_LEVEL");
+-  return level && std::string(level).rfind("D4_",0)==0 ? std::stoul(level+3) : 0;
+-}
+-bool useFourCellBoxes() {
+-  const char* setting=std::getenv("IEDA_RT_DR_WINDOW");
+-  if(!setting)return false;
+-  if(std::string(setting)!="4")throw std::runtime_error("unsupported DR window");
+-  return true;
++  return level && std::string(level).rfind("D12_",0)==0 ? std::stoul(level+4) : 0;
+ }
+ // The split at a partition edge can divide a preserved lead. Check exact
+ // same-layer, collinear metal coverage of the full interval, including both ends.
+@@ -247,8 +241,6 @@
+   dr_iter_param_list.emplace_back(prefer_wire_unit, non_prefer_wire_unit, bend_unit, via_unit, 12, 8, 3, fixed_rect_unit, routed_rect_unit, violation_unit, 3, 10);
+   // clang-format on
+   dr_iter_param_list.resize(1);
+-  if(useFourCellBoxes()) dr_iter_param_list.front().set_size(4);
+-  else if(drBatchCursor()) throw std::runtime_error("DR checkpoint requires matching 4-cell partition");
+   initRoutingState(dr_model);
+   for (int32_t i = 0, iter = 1; i < static_cast<int32_t>(dr_iter_param_list.size()); i++, iter++) {
+     Monitor iter_monitor;
+@@ -499,7 +491,7 @@
+   // state, after all workers' selected routes were uploaded to the database.
+   auto last_save=std::chrono::steady_clock::now();
+   for (auto& group : dr_model.get_dr_box_id_list_list()) {
+-    size_t chunk=useFourCellBoxes()?256:group.size();
++    constexpr size_t chunk=128;
+     for(size_t first=0;first<group.size();first+=chunk) {
+       const size_t end=std::min(group.size(),first+chunk);
+       const size_t next=visited+(end-first);
+@@ -545,8 +537,9 @@
+       visited=next;
+       if(completed.load()!=visited)throw std::runtime_error("DR chunk commit mismatch");
+       const auto now=std::chrono::steady_clock::now();
+-      if(useFourCellBoxes() && (now-last_save>=std::chrono::minutes(3) || visited==total_box_num)) {
++      if(std::getenv("IEDA_RT_SAVE_DR_BATCH") && (visited==128 || now-last_save>=std::chrono::minutes(3) || visited==total_box_num)) {
+         saveDetailedBatch(visited);
++        if(visited==128 && std::getenv("IEDA_RT_TEST_FIRST_BATCH")) throw std::runtime_error("TEST_CHECKPOINT_READY");
+         last_save=std::chrono::steady_clock::now();
+       }
+     }
+--- a/src/operation/iRT/interface/RTInterface.cpp
++++ b/src/operation/iRT/interface/RTInterface.cpp
+@@ -273,7 +273,7 @@
+ void saveDetailedBatch(size_t count)
+ {
+   const char* file=std::getenv("IEDA_RT_SAVE_DR_BATCH");
+-  if (file) transferRouteState(file,false,("D4_"+std::to_string(count)).c_str());
++  if (file) transferRouteState(file,false,("D12_"+std::to_string(count)).c_str());
+ }
+ 
+ // public
+@@ -355,9 +355,9 @@
+   const char* input = std::getenv("IEDA_RT_RESTORE_STATE");
+   const char* level = std::getenv("IEDA_RT_RESTORE_LEVEL");
+   const std::string encoded=level?level:"";
+-  const bool batch=encoded.rfind("D4_",0)==0;
+-  if(batch && (!input || encoded.size()<4 || encoded.size()>10 ||
+-     encoded.find_first_not_of("0123456789",3)!=std::string::npos || encoded[3]=='0'))
++  const bool batch=encoded.rfind("D12_",0)==0;
++  if(batch && (!input || encoded.size()<5 || encoded.size()>11 ||
++     encoded.find_first_not_of("0123456789",4)!=std::string::npos || encoded[4]=='0'))
+     throw std::runtime_error("invalid DR batch cursor");
+   const std::string resume=batch?"TA":encoded;
+   if(input && resume!="TG" && resume!="LA" && resume!="SR" && resume!="TA") throw std::runtime_error("invalid resume stage");

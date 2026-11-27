@@ -16,7 +16,7 @@ Each row identifies a design and its original process. Cell counts are catalog v
 | ariane133 | nangate45 | 168,949 | 132 | Input audit | NOT_AVAILABLE | Native import failed (exit 139); retained normalized DEF endpoints independently matched |
 | bp_multi | nangate45 | 70,634 | 26 | Input audit | AUDITED | Native import DEF, 92,108 nets; normalized endpoints matched |
 | bp | nangate45 | 120,146 | 24 | Input audit | AUDITED | Native import DEF, 154,082 nets; normalized endpoints matched |
-| bp_fe | nangate45 | 24,562 | 11 | Input audit | AUDITED | Native import DEF, 31,478 nets; normalized endpoints matched |
+| bp_fe | nangate45 | 24,562 | 11 | Input audit | AUDITED | 11-macro area variant reached routing; timed out at 5,400 s, unavailable for full flow |
 | bp_be | nangate45 | 42,264 | 10 | Input audit | NOT_AVAILABLE | Native import DEF, 54,103 nets; normalized endpoints matched |
 | bp_quad_sky130 | sky130 | 968,158 | 220 | Input audit | NOT_AVAILABLE | Native import DEF, 996,348 nets; retained normalized DEF endpoints independently matched |
 | ariane136_sky130 | sky130 | 144,748 | 136 | Input audit | NOT_AVAILABLE | Native import DEF, 151,748 nets; normalized endpoints matched |
@@ -39,7 +39,7 @@ Each row identifies a design and its original process. Cell counts are catalog v
 | bp_ics55 | ics55 | 114,374 | 24 | Input audit | AUDITED | Waiting for matching ICS55 libraries |
 | bp_fe_ics55 | ics55 | 20,576 | 11 | Input audit | AUDITED | Waiting for matching ICS55 libraries |
 | bp_be_ics55 | ics55 | 37,374 | 10 | Input audit | AUDITED | Waiting for matching ICS55 libraries |
-| tinyram | nangate45 | 2,983 | 2 | Input audit | AUDITED | Native import DEF, 3,155 nets; normalized endpoints matched |
+| tinyram | nangate45 | 2,983 | 2 | Full backend | VERIFIED | 2 SRAMs; opt-in hold guard; routed DEF readback and abstract GDS; 1,041 DRC findings |
 | jpeg | nangate45 | 59,596 | 0 | Input audit | AUDITED | Native import DEF, 65,791 nets; normalized endpoints matched |
 | toygpu | nangate45 | 363,570 | 0 | Input audit | NOT_AVAILABLE | Native import DEF, 470,482 nets; normalized endpoints matched |
 | vortex | nangate45 | 1,771,888 | 0 | Input audit | NOT_AVAILABLE | Native import failed (exit 134); normalized qualification unsuccessful |
@@ -49,7 +49,7 @@ Each row identifies a design and its original process. Cell counts are catalog v
 | osip_timer | nangate45 | 636 | 0 | Input audit | AUDITED | Native import DEF, 835 nets; normalized endpoints matched |
 | osip_i2c | nangate45 | 656 | 0 | Input audit | AUDITED | Native import DEF, 902 nets; normalized endpoints matched |
 | apb4_rng_nangate45_t | nangate45 | 110 | 0 | Input audit | AUDITED | Native import DEF, 255 nets; normalized endpoints matched |
-| s35932_nangate45_t | nangate45 | 5,247 | 0 | Input audit | AUDITED | Server stage executor through routed DEF readback and abstract GDS; 48 DRC findings |
+| s35932_nangate45_t | nangate45 | 5,247 | 0 | Full backend | VERIFIED | Server stage executor through routed DEF readback and abstract GDS; 48 DRC findings |
 | s5378_nangate45_t | nangate45 | 752 | 0 | Input audit | AUDITED | Native import DEF, 978 nets; normalized endpoints matched |
 | s9234_nangate45_t | nangate45 | 638 | 0 | Input audit | AUDITED | Native import DEF, 814 nets; normalized endpoints matched |
 | salsa20_nangate45_t | nangate45 | 20,335 | 0 | Input audit | AUDITED | Native import DEF, 24,108 nets; normalized endpoints matched |

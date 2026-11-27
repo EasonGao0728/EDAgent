@@ -1,5 +1,5 @@
 """Native DSH conversation/tool-call translation for official ChatGPT OAuth."""
-import json
+import json,re
 from .chatgpt_provider import ChatGPTProvider, completed_response
 from .openai_http import API
 
@@ -21,7 +21,13 @@ def translate(messages):
 
 def native_model(req):
     provider=ChatGPTProvider(model=req.get('model'))
-    provider.resolve_model()
+    # An explicitly selected model goes directly to the authenticated endpoint.
+    # Re-fetching /models per turn adds a failure point; POST still enforces
+    # model existence and account access. Only default selection needs discovery.
+    if provider.model is None:
+        provider.resolve_model()
+    elif not isinstance(provider.model,str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,95}',provider.model):
+        raise ValueError('invalid selected model identifier')
     instructions,inputs=translate(req['messages'])
     tools=[]
     for t in req.get('tools',[]):

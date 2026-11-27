@@ -7,6 +7,8 @@ export const ORIGINS={
   planned:{label:'规划能力 · 未实现',detail:'尚无可执行实现，不会因检索命中而自动启用。',url:null}
 };
 export const CARD_COPY={
+  'bp-multi-metal-short':['adapted','逐标记对照补线前后短路；通过整片 DRC 和连通性复验接受或回退单网修改。'],
+  'bp-multi-route':['adapted','复用合法化检查点，查看服务器布线进度和原生状态文件。'],
   'pre-route-quality':['adapted','核对 IO 与线长口径，并比较 hold 修复的时序收益和面积代价，适合预布线策略评估。'],
   'local-via-eco':['adapted','在真实 DRC 热点试改一个过孔模板并复核全芯片，适合限定案例的单点修复试验。'],
   'workflow-control':['project','根据证据规划下一步并续接已验收检查点，适合多阶段任务编排和异常恢复。'],
@@ -33,6 +35,8 @@ export const CARD_COPY={
   'tool-discovery':['project','按任务语义检索并按需加载工具定义，适合从工具库选择候选并节省上下文。']
 };
 export const TOOL_COPY={
+  mp_bp_multi_quality:'诊断、提交及核验已交付 bp_multi 的局部短路改线试验。',
+  mp_bp_multi_route:'启动或接回 bp_multi 的固定实验分支，返回同一作业的实测进度和检查点。',
   mp_agent_subgoal:'记录带宿主完成条件的子目标，用于拆解多步任务。',
   mp_agent_reflect:'引用真实回执保存反思假设，用于积累同任务经验。',
   mp_tools_search:'用语义和关键词召回少量工具，用于寻找适合当前问题的能力。',

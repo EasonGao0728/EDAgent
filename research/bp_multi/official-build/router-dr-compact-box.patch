@@ -1,0 +1,226 @@
+--- a/src/operation/iRT/source/module/detailed_router/dr_data_manager/DRNode.hpp
++++ b/src/operation/iRT/source/module/detailed_router/dr_data_manager/DRNode.hpp
+@@ -16,6 +16,8 @@
+ // ***************************************************************************************
+ #pragma once
+ 
++#include <boost/container/flat_map.hpp>
++#include <boost/container/flat_set.hpp>
+ #include "Direction.hpp"
+ #include "LayerCoord.hpp"
+ #include "Orientation.hpp"
+@@ -39,15 +41,15 @@
+   DRNode() = default;
+   ~DRNode() = default;
+   // getter
+-  std::map<Orientation, DRNode*>& get_neighbor_node_map() { return _neighbor_node_map; }
+-  std::map<Orientation, std::set<int32_t>>& get_orient_fixed_rect_map() { return _orient_fixed_rect_map; }
+-  std::map<Orientation, std::set<int32_t>>& get_orient_routed_rect_map() { return _orient_routed_rect_map; }
+-  std::map<Orientation, int32_t>& get_orient_violation_number_map() { return _orient_violation_number_map; }
++  boost::container::flat_map<Orientation, DRNode*>& get_neighbor_node_map() { return _neighbor_node_map; }
++  boost::container::flat_map<Orientation, boost::container::flat_set<int32_t>>& get_orient_fixed_rect_map() { return _orient_fixed_rect_map; }
++  boost::container::flat_map<Orientation, boost::container::flat_set<int32_t>>& get_orient_routed_rect_map() { return _orient_routed_rect_map; }
++  boost::container::flat_map<Orientation, int32_t>& get_orient_violation_number_map() { return _orient_violation_number_map; }
+   // setter
+-  void set_neighbor_node_map(const std::map<Orientation, DRNode*>& neighbor_node_map) { _neighbor_node_map = neighbor_node_map; }
+-  void set_orient_fixed_rect_map(const std::map<Orientation, std::set<int32_t>>& orient_fixed_rect_map) { _orient_fixed_rect_map = orient_fixed_rect_map; }
+-  void set_orient_routed_rect_map(const std::map<Orientation, std::set<int32_t>>& orient_routed_rect_map) { _orient_routed_rect_map = orient_routed_rect_map; }
+-  void set_orient_violation_number_map(const std::map<Orientation, int32_t>& orient_violation_number_map)
++  void set_neighbor_node_map(const boost::container::flat_map<Orientation, DRNode*>& neighbor_node_map) { _neighbor_node_map = neighbor_node_map; }
++  void set_orient_fixed_rect_map(const boost::container::flat_map<Orientation, boost::container::flat_set<int32_t>>& orient_fixed_rect_map) { _orient_fixed_rect_map = orient_fixed_rect_map; }
++  void set_orient_routed_rect_map(const boost::container::flat_map<Orientation, boost::container::flat_set<int32_t>>& orient_routed_rect_map) { _orient_routed_rect_map = orient_routed_rect_map; }
++  void set_orient_violation_number_map(const boost::container::flat_map<Orientation, int32_t>& orient_violation_number_map)
+   {
+     _orient_violation_number_map = orient_violation_number_map;
+   }
+@@ -55,7 +57,7 @@
+   DRNode* getNeighborNode(Orientation orientation)
+   {
+     DRNode* neighbor_node = nullptr;
+-    if (RTUTIL.exist(_neighbor_node_map, orientation)) {
++    if ((_neighbor_node_map.find(orientation) != _neighbor_node_map.end())) {
+       neighbor_node = _neighbor_node_map[orientation];
+     }
+     return neighbor_node;
+@@ -63,10 +65,10 @@
+   double getFixedRectCost(int32_t net_idx, Orientation orientation, double fixed_rect_unit)
+   {
+     int32_t fixed_rect_num = 0;
+-    if (RTUTIL.exist(_orient_fixed_rect_map, orientation)) {
+-      std::set<int32_t>& net_set = _orient_fixed_rect_map[orientation];
++    if ((_orient_fixed_rect_map.find(orientation) != _orient_fixed_rect_map.end())) {
++      const auto& net_set = _orient_fixed_rect_map[orientation];
+       fixed_rect_num = static_cast<int32_t>(net_set.size());
+-      if (RTUTIL.exist(net_set, net_idx)) {
++      if ((net_set.find(net_idx) != net_set.end())) {
+         fixed_rect_num--;
+       }
+       if (fixed_rect_num < 0) {
+@@ -82,10 +84,10 @@
+   double getRoutedRectCost(int32_t net_idx, Orientation orientation, double routed_rect_unit)
+   {
+     int32_t routed_rect_num = 0;
+-    if (RTUTIL.exist(_orient_routed_rect_map, orientation)) {
+-      std::set<int32_t>& net_set = _orient_routed_rect_map[orientation];
++    if ((_orient_routed_rect_map.find(orientation) != _orient_routed_rect_map.end())) {
++      const auto& net_set = _orient_routed_rect_map[orientation];
+       routed_rect_num = static_cast<int32_t>(net_set.size());
+-      if (RTUTIL.exist(net_set, net_idx)) {
++      if ((net_set.find(net_idx) != net_set.end())) {
+         routed_rect_num--;
+       }
+       if (routed_rect_num < 0) {
+@@ -101,7 +103,7 @@
+   double getViolationCost(Orientation orientation, double violation_unit)
+   {
+     int32_t violation_num = 0;
+-    if (RTUTIL.exist(_orient_violation_number_map, orientation)) {
++    if ((_orient_violation_number_map.find(orientation) != _orient_violation_number_map.end())) {
+       violation_num = _orient_violation_number_map[orientation];
+     }
+     double cost = 0;
+@@ -131,13 +133,13 @@
+ #endif
+ 
+  private:
+-  std::map<Orientation, DRNode*> _neighbor_node_map;
++  boost::container::flat_map<Orientation, DRNode*> _neighbor_node_map;
+   // obstacle & pin_shape
+-  std::map<Orientation, std::set<int32_t>> _orient_fixed_rect_map;
++  boost::container::flat_map<Orientation, boost::container::flat_set<int32_t>> _orient_fixed_rect_map;
+   // net_result
+-  std::map<Orientation, std::set<int32_t>> _orient_routed_rect_map;
++  boost::container::flat_map<Orientation, boost::container::flat_set<int32_t>> _orient_routed_rect_map;
+   // violation
+-  std::map<Orientation, int32_t> _orient_violation_number_map;
++  boost::container::flat_map<Orientation, int32_t> _orient_violation_number_map;
+ #if 1  // astar
+   // single task
+   std::set<Direction> _direction_set;
+--- a/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
++++ b/src/operation/iRT/source/module/detailed_router/DetailedRouter.cpp
+@@ -457,11 +457,17 @@
+   }
+ 
+   size_t routed_box_num = 0;
++  std::atomic<size_t> completed{0};
+   for (std::vector<DRBoxId>& dr_box_id_list : dr_model.get_dr_box_id_list_list()) {
+     Monitor stage_monitor;
+ #pragma omp parallel for
+     for (DRBoxId& dr_box_id : dr_box_id_list) {
+-      DRBox& dr_box = dr_box_map[dr_box_id.get_x()][dr_box_id.get_y()];
++      auto& spec=dr_box_map[dr_box_id.get_x()][dr_box_id.get_y()];
++      DRBox dr_box;
++      dr_box.set_box_rect(spec.get_box_rect());
++      dr_box.set_dr_box_id(spec.get_dr_box_id());
++      dr_box.set_dr_iter_param(spec.get_dr_iter_param());
++      dr_box.set_initial_routing(spec.get_initial_routing());
+       buildFixedRect(dr_box);
+       buildAccessPoint(dr_box);
+       buildNetResult(dr_box);
+@@ -483,6 +489,8 @@
+       }
+       selectBestResult(dr_box);
+       freeDRBox(dr_box);
++      const auto n=++completed;
++      if(n%64==0)RTLOG.info(Loc::current(),"DR boxes committed ",n,"/",total_box_num);
+     }
+     routed_box_num += dr_box_id_list.size();
+     RTLOG.info(Loc::current(), "Routed ", routed_box_num, "/", total_box_num, "(", RTUTIL.getPercentage(routed_box_num, total_box_num), ") boxes with ",
+@@ -849,7 +857,7 @@
+     std::set<int32_t>& curr_axis = (routing_layer_list[layer_idx].isPreferH()) ? layer_axis_map[layer_idx].first : layer_axis_map[layer_idx].second;
+     for (int32_t x = 0; x < dr_node_map.get_x_size(); x++) {
+       for (int32_t y = 0; y < dr_node_map.get_y_size(); y++) {
+-        std::map<Orientation, DRNode*>& neighbor_node_map = dr_node_map[x][y].get_neighbor_node_map();
++        auto& neighbor_node_map = dr_node_map[x][y].get_neighbor_node_map();
+         if (routing_hv) {
+           if (!routing_layer_list[layer_idx].isPreferH()) {
+             if (RTUTIL.exist(curr_axis, dr_node_map[x][y].get_y())) {
+@@ -1002,7 +1010,7 @@
+               continue;
+             }
+             Orientation oppo_orientation = RTUTIL.getOppositeOrientation(orient);
+-            if (RTUTIL.exist(neighbor_node->get_orient_fixed_rect_map(), oppo_orientation)) {
++            if ((neighbor_node->get_orient_fixed_rect_map().find(oppo_orientation) != neighbor_node->get_orient_fixed_rect_map().end())) {
+               neighbor_node->get_orient_fixed_rect_map()[oppo_orientation].erase(-1);
+             }
+           }
+@@ -1470,14 +1478,13 @@
+ 
+   double bend_cost = 0;
+   if (start_node->get_layer_idx() == end_node->get_layer_idx()) {
+-    std::set<Direction> direction_set;
+-    direction_set.insert(start_node->get_direction_set().begin(), start_node->get_direction_set().end());
+-    if (start_node->get_parent_node() != nullptr) {
+-      direction_set.insert(RTUTIL.getDirection(*start_node->get_parent_node(), *start_node));
+-    }
+-    direction_set.insert(end_node->get_direction_set().begin(), end_node->get_direction_set().end());
+-    direction_set.insert(RTUTIL.getDirection(*start_node, *end_node));
+-    if (direction_set.size() == 2) {
++    unsigned mask=0;
++    auto include=[&](Direction d) { mask |= 1u << static_cast<unsigned>(d); };
++    for (auto d : start_node->get_direction_set()) include(d);
++    if (start_node->get_parent_node()) include(RTUTIL.getDirection(*start_node->get_parent_node(), *start_node));
++    for (auto d : end_node->get_direction_set()) include(d);
++    include(RTUTIL.getDirection(*start_node,*end_node));
++    if (__builtin_popcount(mask)==2) {
+       bend_cost += bend_unit;
+     }
+   }
+@@ -2611,13 +2618,13 @@
+     for (DRNode* valid_node : valid_node_set) {
+       if (LayerCoord(*valid_node) != first_coord) {
+         valid_node->get_orient_violation_number_map()[oppo_orientation]++;
+-        if (RTUTIL.exist(valid_node->get_neighbor_node_map(), oppo_orientation)) {
++        if ((valid_node->get_neighbor_node_map().find(oppo_orientation) != valid_node->get_neighbor_node_map().end())) {
+           valid_node->get_neighbor_node_map()[oppo_orientation]->get_orient_violation_number_map()[orientation]++;
+         }
+       }
+       if (LayerCoord(*valid_node) != second_coord) {
+         valid_node->get_orient_violation_number_map()[orientation]++;
+-        if (RTUTIL.exist(valid_node->get_neighbor_node_map(), orientation)) {
++        if ((valid_node->get_neighbor_node_map().find(orientation) != valid_node->get_neighbor_node_map().end())) {
+           valid_node->get_neighbor_node_map()[orientation]->get_orient_violation_number_map()[oppo_orientation]++;
+         }
+       }
+@@ -2683,7 +2690,7 @@
+             if (orientation == Orientation::kAbove || orientation == Orientation::kBelow) {
+               continue;
+             }
+-            if (!RTUTIL.exist(node.get_neighbor_node_map(), orientation)) {
++            if (!(node.get_neighbor_node_map().find(orientation) != node.get_neighbor_node_map().end())) {
+               continue;
+             }
+             node_orientation_map[&node].insert(orientation);
+@@ -2711,7 +2718,7 @@
+                 || orientation == Orientation::kNorth) {
+               continue;
+             }
+-            if (!RTUTIL.exist(node.get_neighbor_node_map(), orientation)) {
++            if (!(node.get_neighbor_node_map().find(orientation) != node.get_neighbor_node_map().end())) {
+               continue;
+             }
+             node_orientation_map[&node].insert(orientation);
+@@ -2809,11 +2816,11 @@
+               continue;
+             }
+             DRNode& below_node = layer_node_map[below_routing_layer_idx][x][y];
+-            if (RTUTIL.exist(below_node.get_neighbor_node_map(), Orientation::kAbove)) {
++            if ((below_node.get_neighbor_node_map().find(Orientation::kAbove) != below_node.get_neighbor_node_map().end())) {
+               node_orientation_map[&below_node].insert(Orientation::kAbove);
+             }
+             DRNode& above_node = layer_node_map[above_routing_layer_idx][x][y];
+-            if (RTUTIL.exist(above_node.get_neighbor_node_map(), Orientation::kBelow)) {
++            if ((above_node.get_neighbor_node_map().find(Orientation::kBelow) != above_node.get_neighbor_node_map().end())) {
+               node_orientation_map[&above_node].insert(Orientation::kBelow);
+             }
+           }
+@@ -3660,7 +3667,7 @@
+         }
+         for (auto& [orient, neighbor] : dr_node.get_neighbor_node_map()) {
+           Orientation opposite_orient = RTUTIL.getOppositeOrientation(orient);
+-          if (!RTUTIL.exist(neighbor->get_neighbor_node_map(), opposite_orient)) {
++          if (!(neighbor->get_neighbor_node_map().find(opposite_orient) != neighbor->get_neighbor_node_map().end())) {
+             RTLOG.error(Loc::current(), "The dr_node neighbor is not bidirectional!");
+           }
+           if (neighbor->get_neighbor_node_map()[opposite_orient] != &dr_node) {

@@ -339,6 +339,31 @@ class SessionTests(unittest.TestCase):
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_retry_is_confined_to_pre_request_tls_handshake(self):
+        import ssl
+        from http.client import HTTPSConnection
+        from macro_agent.openai_http import HandshakeConnection
+        conn=HandshakeConnection("api.openai.com")
+        with patch.object(HTTPSConnection,"connect",side_effect=[ssl.SSLEOFError(),None]) as connect, patch("macro_agent.openai_http.time.sleep"):
+            conn.connect()
+            self.assertEqual(connect.call_count,2)
+        with patch.object(HTTPSConnection,"connect",side_effect=ssl.SSLEOFError()) as connect, patch("macro_agent.openai_http.time.sleep"):
+            with self.assertRaises(ssl.SSLEOFError):conn.connect()
+            self.assertEqual(connect.call_count,3)
+        with patch.object(HTTPSConnection,"connect",side_effect=ssl.SSLCertVerificationError()) as connect:
+            with self.assertRaises(ssl.SSLCertVerificationError):conn.connect()
+            self.assertEqual(connect.call_count,1)
+
+    def test_failed_stream_records_structured_fields_only(self):
+        stream = sse({"type":"response.failed","response":{"error":{
+            "code":"upstream_disconnected","message":"private request text"}}})
+        stream.headers={"x-request-id":"req_a12345678"}
+        with self.assertRaises(OpenAIError) as failed:
+            completed_response(stream)
+        self.assertEqual(failed.exception.code,"remote_error")
+        self.assertEqual(failed.exception.stream_event,{"event":"response.failed",
+                         "code":"upstream_disconnected","request_id":"req_a12345678"})
+
     def test_delta_is_not_success_and_late_quota_error_is_failure(self):
         delta = {"type": "response.output_text.delta", "delta": '{"ok":true}'}
         for stream in (sse(delta), sse(delta, {"type": "response.failed", "response": {"error": {

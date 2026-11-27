@@ -23,7 +23,7 @@ npm.cmd start
 
 ## 运行完整案例
 
-1. 向服务器管理员获取已部署 iEDA 的主机和个人账号。按[部署指南](DEPLOYMENT.md)设置 SSH 别名 `eda-worker` 和两端的 `environments/remote-server.json`。先用 `ssh -o BatchMode=yes eda-worker id -u` 验证连接。全新安装默认显示服务器离线。独立部署还需准备匹配的原生工具、案例包和工艺库。
+1. 使用管理员提供的 SSH 别名，把 `ssh -o BatchMode=yes eda-worker id -u` 中的 `eda-worker` 换成该别名，确认返回本账号的 UID。在 PowerShell 中设置 `$env:EDAGENT_REMOTE_PROFILE = "$env:USERPROFILE\.edagent\worker.json"`，指向自己的工作台连接配置，再在同一窗口启动工作台。案例目录可用配置中的 `benchmark_root` 指定。全新安装默认关闭远程执行，独立部署还需匹配的原生工具、案例包和工艺库。[部署说明](DEPLOYMENT.md)
 2. 服务器在线后，新建对话，打开「选择现有案例」，将任务类型筛为「完整后端」，选中 `swerv_nangate45`。
 3. 在对话中输入「请从映射网表运行这个 SWERV 案例的完整后端，保留三个 SRAM 宏，交付布线 DEF、版图预览和 DRC 报告。」
 4. 从当前任务查看布局、时钟树、布线和后续检查。打开交付卡片，核对宏数量、DEF 回读、GDS 验证和剩余 DRC。当前公开目录列出 50 个设计，其中 5 个已登记完整后端入口。逐项状态见[案例矩阵](CASE_MATRIX.md)。

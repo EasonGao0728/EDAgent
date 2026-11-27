@@ -20,6 +20,10 @@ def error_response(exc, mode, root=ROOT):
         diagnostic['launch_failures']=exc.launch_failures
     if hasattr(exc,'transport'):
         diagnostic['transport']=exc.transport
+    if hasattr(exc,'stream_event'):
+        diagnostic['stream_event']=exc.stream_event
+    if getattr(exc,'status',None) is not None:
+        diagnostic['http_status']=exc.status
     # Do not persist exception text: remote errors can contain sensitive values.
     try:
         folder=Path(root)/'runs';folder.mkdir(parents=True,exist_ok=True)
@@ -44,4 +48,5 @@ def error_response(exc, mode, root=ROOT):
         message=f'{type(exc).__name__}: {exc}'
     if saved: message+=f' [诊断 {event_id}，runs/dsh-host-errors.jsonl]'
     else: message+=' [诊断日志也无法写入，请检查项目目录写权限]'
-    return {'ok':False,'error':message,'code':code or type(exc).__name__, 'requires_login':needs_login}
+    return {'ok':False,'error':message,'code':code or type(exc).__name__, 'requires_login':needs_login,
+            'http_status':getattr(exc,'status',None)}
